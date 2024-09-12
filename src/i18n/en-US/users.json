@@ -1,0 +1,21 @@
+{
+  "menu": {
+    "title": "Hello /_auth/users!",
+    "label": "Move to user"
+  },
+  "forms": {
+    "title": "Users posts!",
+    "label": "User",
+    "selectPlaceholder": "Select a user",
+    "description": "You can see the posts of the user you select via the filter managed by the URL.",
+    "reset": "Reset Filter"
+  },
+  "content": {
+    "title": "Post number:",
+    "noContent": "There are no items linked to this person"
+  },
+  "byUser": {
+    "title": "Hello /_auth/users/{{id}}!",
+    "goBack": "Back to user list"
+  }
+}

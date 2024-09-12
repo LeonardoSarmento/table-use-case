@@ -1,0 +1,12 @@
+{
+  "initial": "Início",
+  "home": "Home",
+  "users": "Usuários",
+  "zod": "Exemplo com Zod",
+  "about": "Sobre",
+  "config": "Configuração",
+  "logout": "Deslogar",
+  "portfolio": "Portfólio",
+  "schadcnTable": "Tabela do Shadcn",
+  "table": "Tabela"
+}

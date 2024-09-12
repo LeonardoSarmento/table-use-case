@@ -1,0 +1,21 @@
+{
+  "menu": {
+    "title": "Olá de /_auth/users!",
+    "label": "Mover para usuário"
+  },
+  "forms": {
+    "title": "Posts dos usuários!",
+    "label": "Usuário",
+    "selectPlaceholder": "Selecione um usuário",
+    "description": "Você consegue ver os posts do usuário que você selecionar através do filtro gerenciado pela URL.",
+    "reset": "Limpar Filtro"
+  },
+  "content": {
+    "title": "Post número: ",
+    "noContent": "Não existem items vinculados a essa pessoa"
+  },
+  "byUser": {
+    "title": "Olá /_auth/users/{{id}}!",
+    "goBack": "Voltar para listagem de usuários"
+  }
+}
