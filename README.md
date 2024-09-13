@@ -1,6 +1,6 @@
-## Project - Table managed by URL Params use case.
+## Project - Use case for a table managed by URL Parameters.
 
-Use case to apply filter management  to filter table in a project.
+How to apply filter management using URL parameters to a table in a project.
 
 ### Main Techs
 
