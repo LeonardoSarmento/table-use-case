@@ -1,23 +1,22 @@
-import {
-  getRouteApi,
-  RegisteredRouter,
-  RouteIds,
-  useNavigate,
-} from '@tanstack/react-router'
-import { cleanEmptyParams } from '@services/utils/cleanEmptyParams'
+import { getRouteApi, NavigateOptions, RegisteredRouter, RouteIds, useNavigate } from '@tanstack/react-router';
+import { cleanEmptyParams } from '@services/utils/cleanEmptyParams';
 
-export function useFilters<T extends RouteIds<RegisteredRouter['routeTree']>>(
-  routeId: T
-) {
-  const routeApi = getRouteApi<T>(routeId)
-  const navigate = useNavigate()
-  const filters = routeApi.useSearch()
+export function useFilters<T extends RouteIds<RegisteredRouter['routeTree']>>(routeId: T) {
+  const routeApi = getRouteApi<T>(routeId);
+  const navigate = useNavigate();
+  const filters = routeApi.useSearch();
 
   const setFilters = (partialFilters: Partial<typeof filters>) =>
     navigate({
-      search: prev => cleanEmptyParams({ ...prev, ...partialFilters }),
-    })
-  const resetFilters = () => navigate({ search: {} })
+      search: (prev) => {
+        // Limpar parâmetros vazios e garantir que a tipagem de retorno seja correta
+        const newSearchParams = cleanEmptyParams({ ...prev, ...partialFilters });
 
-  return { filters, setFilters, resetFilters }
+        // Retornar explicitamente o tipo correto
+        return newSearchParams; // Aqui o tipo de retorno deve ser o mesmo de 'prev'
+      },
+    } as NavigateOptions);
+  const resetFilters = () => navigate({ search: true });
+
+  return { filters, setFilters, resetFilters };
 }

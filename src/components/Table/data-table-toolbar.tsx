@@ -6,7 +6,7 @@ import { priorities, statuses } from '@/constants/options';
 import { DataTableFacetedFilter } from './data-table-faceted-filter';
 import { DebouncedInput } from '../debouncedInput';
 import { TaskFilters } from '@/api/task';
-import { useNavigate } from '@tanstack/react-router';
+import { NavigateOptions, useNavigate } from '@tanstack/react-router';
 import { useFilters } from '@services/hooks/useFilters';
 import { Route } from '@/routes/shadcnTable';
 
@@ -38,23 +38,19 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
           />
         ) : null}
         {table.getColumn('status') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('status')}
-            title="Status"
-            options={statuses}
-          />
+          <DataTableFacetedFilter column={table.getColumn('status')} title="Status" options={statuses} />
         )}
         {table.getColumn('priority') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('priority')}
-            title="Priority"
-            options={priorities}
-          />
+          <DataTableFacetedFilter column={table.getColumn('priority')} title="Priority" options={priorities} />
         )}
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => navigate({ search: { pageIndex: filters.pageIndex, pageSize: filters.pageSize } })}
+            onClick={() =>
+              navigate({
+                search: { pageIndex: filters.pageIndex, pageSize: filters.pageSize } as NavigateOptions['search'],
+              })
+            }
             className="h-8 px-2 lg:px-3"
           >
             Reset
