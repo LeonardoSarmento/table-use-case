@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { Github } from 'lucide-react';
 import { Button } from './ui/button';
 import { PortfolioNav } from './PortfolioNav';
-import { Logout } from './Logout';
 
 export function NavigationBar() {
   const { t } = useTranslation('NavigationBar');
@@ -29,7 +28,6 @@ export function NavigationBar() {
         </Link>
       </div>
       <div className="flex w-full justify-around gap-3 md:justify-end xl:w-1/3">
-        <Logout />
         <div className="md:hidden">
           <GithubLink />
         </div>

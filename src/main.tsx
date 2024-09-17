@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 
 // Import the generated route tree
-import { AuthProvider, useAuth } from '@services/hooks/auth';
 import './index.css';
 import { ThemeProvider } from '@services/providers/Theme-provider';
 import { queryClient, QueryProvider } from '@services/providers/QueryProvider';
@@ -15,7 +14,6 @@ const router = createRouter({
   routeTree,
   context: {
     queryClient,
-    auth: undefined!,
   },
   defaultPreload: 'intent',
   // Since we're using React Query, we don't want loader calls to ever be stale
@@ -31,19 +29,16 @@ declare module '@tanstack/react-router' {
 }
 
 function InnerApp() {
-  const auth = useAuth();
-  return <RouterProvider router={router} context={{ auth }} />;
+  return <RouterProvider router={router} />;
 }
 
 function App() {
   return (
-    <AuthProvider>
       <QueryProvider>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
           <InnerApp />
         </ThemeProvider>
       </QueryProvider>
-    </AuthProvider>
   );
 }
 
