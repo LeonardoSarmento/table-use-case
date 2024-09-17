@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { labels, priorities, statuses } from '@/constants/options';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
-import { Task } from '@services/types/task';
+import { Task } from '@services/types/Task';
 
 export const columnsExample: ColumnDef<Task>[] = [
   {

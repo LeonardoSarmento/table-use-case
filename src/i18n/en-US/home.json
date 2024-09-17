@@ -1,22 +1,24 @@
 {
   "title": "Hello, I am Leonardo Sarmento!",
-  "description1": "An initial project configuration with a routing and state management system.",
-  "description2": "Examples of use with dynamic routing, query params and useLoaderData.",
+  "description": [
+    "An initial configuration of the project with a routing system and management of filters in tables using query params.",
+    "Examples of use with tables, dynamic routing and query params."
+  ],
   "footer": "I hope you have a great development!",
   "stack": {
     "main": {
-      "title": "Routing and State Management TechStack",
-      "description": "Dependencies utilized to configure the routing with state management system",
+      "title": "Table + Query Params MainStack",
+      "description": "Dependencies used to configure the table system with Query Params",
       "tech": [
+        {
+          "title": "Table",
+          "description": "Tanstack Table",
+          "link": "https://tanstack.com/table/latest/docs/installation"
+        },
         {
           "title": "Routing",
           "description": "Tanstack Router",
           "link": "https://tanstack.com/router/latest/docs/framework/react/quick-start"
-        },
-        {
-          "title": "State Management",
-          "description": "Tanstack Query",
-          "link": "https://tanstack.com/query/latest/docs/framework/react/quick-start"
         }
       ]
     },
@@ -26,9 +28,9 @@
       "tech": [
         { "title": "Framework", "description": "Vite.js, React and Typescript", "link": "https://vitejs.dev/guide/" },
         {
-          "title": "Form",
-          "description": "React Hook Form",
-          "link": "https://www.react-hook-form.com/get-started/"
+          "title": "State Management",
+          "description": "Tanstack Query",
+          "link": "https://tanstack.com/query/latest/docs/framework/react/quick-start"
         },
         { "title": "Validation", "description": "Zod", "link": "https://zod.dev/?id=basic-usage" },
         {

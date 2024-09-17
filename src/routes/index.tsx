@@ -15,8 +15,7 @@ function IndexComponent() {
       <Card className="space-y-3">
         <CardHeader className="border-b text-center">
           <CardTitle className="border-b text-lg">{t('title')}</CardTitle>
-          <CardDescription>{t('description1')}</CardDescription>
-          <CardDescription>{t('description2')}</CardDescription>
+          <MapCardDescriptionComponent content={t('description', { returnObjects: true })} />
         </CardHeader>
         <CardContent className="space-y-4">
           <Card className="bg-muted p-2">
@@ -67,5 +66,11 @@ function ListComponent({ title, description, link, className }: TListComponent) 
 function MapListComponent({ content }: { content: TListComponent[] }) {
   return content.map((tech) => (
     <ListComponent key={tech.title} title={tech.title} description={tech.description} link={tech.link} />
+  ));
+}
+
+function MapCardDescriptionComponent({ content }: { content: string[] }) {
+  return content.map((descripion, index) => (
+    <CardDescription key={`description-${index}`}>{descripion}</CardDescription>
   ));
 }

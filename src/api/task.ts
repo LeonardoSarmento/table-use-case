@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { Filters, PaginatedData } from './types';
-import { Task } from '@services/types/task';
 import { priorities, statuses } from '@/constants/options';
+import { Task } from '@services/types/Task';
 
 const DEFAULT_PAGE = 0;
 const DEFAULT_PAGE_SIZE = 10;

@@ -6,7 +6,7 @@ import { priorities, statuses } from '@/constants/options';
 import { DataTableFacetedFilter } from './data-table-faceted-filter';
 import { DebouncedInput } from '../debouncedInput';
 import { TaskFilters } from '@/api/task';
-import { NavigateOptions, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useFilters } from '@services/hooks/useFilters';
 import { Route } from '@/routes/shadcnTable';
 
@@ -48,7 +48,8 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
             variant="ghost"
             onClick={() =>
               navigate({
-                search: { pageIndex: filters.pageIndex, pageSize: filters.pageSize } as NavigateOptions['search'],
+                to: '.',
+                search: { pageIndex: filters.pageIndex, pageSize: filters.pageSize },
               })
             }
             className="h-8 px-2 lg:px-3"

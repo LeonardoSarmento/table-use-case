@@ -1,4 +1,4 @@
-## Configurando o seu projeto com roteamento dinamico e gerenciamento de estados
+## Configurando o seu projeto com gerenciamento de filtros de tabela por Query Params
 
 Calma que vou escrever ainda sobre. :)
 

@@ -43,10 +43,10 @@ export function NavigationBar() {
 
 function GithubLink() {
   return (
-    <a href="https://github.com/LeonardoSarmento/routing-use-case" target="_blank" rel="noopener noreferrer">
+    <a href="https://github.com/LeonardoSarmento/table-use-case" target="_blank" rel="noopener noreferrer">
       <Button variant="ghost" className="gap-3">
         <Github />
-        <p className="text-base underline underline-offset-4 max-md:hidden">routing-use-case</p>
+        <p className="text-base underline underline-offset-4 max-md:hidden">table-use-case</p>
       </Button>
     </a>
   );

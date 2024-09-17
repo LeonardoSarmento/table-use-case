@@ -1,4 +1,4 @@
-## Setting up you project for dynamic routing and state managment
+## Setting up a project to manage table filters using Query Params
 
 Just wait a little bit. i'm writting about it :)
 

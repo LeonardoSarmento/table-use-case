@@ -1,22 +1,24 @@
 {
   "title": "Olá, eu sou Leonardo Sarmento!",
-  "description1": "Uma configuração inicial do projeto com sistema de roteamento e gerenciamento de estados.",
-  "description2": "Exemplos de utilização com roteamento dinâmico, query params e useLoaderData.",
+  "description": [
+    "Uma configuração inicial do projeto com sistema de roteamento e gerenciamento de filtros em tabelas usando query params.",
+    "Exemplos de utilização com tabelas, roteamento dinâmico e query params."
+  ],
   "footer": "Espero que você tenha um ótimo desenvolvimento!",
   "stack": {
     "main": {
-      "title": "Rotamento e gerenciamento de estado TechStack",
-      "description": "Dependências utilizadas para configurar o sistema de internacionalização",
+      "title": "Tabela + Query Params MainStack",
+      "description": "Dependências utilizadas para configurar o sistema de tabelas com Query Params",
       "tech": [
+        {
+          "title": "Tabelas",
+          "description": "Tanstack Table",
+          "link": "https://tanstack.com/table/latest/docs/installation"
+        },
         {
           "title": "Roteamento",
           "description": "Tanstack Router",
           "link": "https://tanstack.com/router/latest/docs/framework/react/quick-start"
-        },
-        {
-          "title": "Gerênciamento de Estados",
-          "description": "Tanstack Query",
-          "link": "https://tanstack.com/query/latest/docs/framework/react/quick-start"
         }
       ]
     },
@@ -26,9 +28,9 @@
       "tech": [
         { "title": "Framework", "description": "Vite.js, React e Typescript", "link": "https://vitejs.dev/guide/" },
         {
-          "title": "Formulário",
-          "description": "React Hook Form",
-          "link": "https://www.react-hook-form.com/get-started/"
+          "title": "Gerênciamento de Estados",
+          "description": "Tanstack Query",
+          "link": "https://tanstack.com/query/latest/docs/framework/react/quick-start"
         },
         { "title": "Validação", "description": "Zod", "link": "https://zod.dev/?id=basic-usage" },
         {
