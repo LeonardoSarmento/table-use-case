@@ -2,7 +2,7 @@ import { getRouteApi, RegisteredRouter, RouteIds, useNavigate } from '@tanstack/
 import { cleanEmptyParams } from '@services/utils/cleanEmptyParams';
 
 export function useFilters<T extends RouteIds<RegisteredRouter['routeTree']>>(routeId: T) {
-  const routeApi = getRouteApi<T>(routeId);
+  const routeApi = getRouteApi(routeId);
   const navigate = useNavigate();
   const filters = routeApi.useSearch();
 
@@ -14,7 +14,7 @@ export function useFilters<T extends RouteIds<RegisteredRouter['routeTree']>>(ro
         return newSearchParams;
       },
     });
-  const resetFilters = () => navigate({ search: true });
+  const resetFilters = () => navigate({ to: '.', search: {} });
 
   return { filters, setFilters, resetFilters };
 }
