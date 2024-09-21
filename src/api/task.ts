@@ -46,31 +46,18 @@ export async function fetchTasks(filtersAndPagination: TaskFilters): Promise<Pag
       if (filter === undefined || filter === '') return true;
 
       const value = task[key as keyof Task];
-      // Handle 'status' and 'priority' which are arrays
+
       if (key === 'status' || key === 'priority') {
         if (Array.isArray(filter)) {
-          if (filter.length === 0) {
-            // If filter array is empty, do not apply this filter
-            return true;
-          }
-
-          // Check if task's value (which could be a single value or an array) is included in the filter array
-          if (Array.isArray(value)) {
-            return value.some((val) => filter.includes(val));
-          }
-          return filter.includes(value as string);
+          if (filter.length === 0) return true;
+          return Array.isArray(value) ? value.some((val) => filter.includes(val)) : filter.includes(value as string);
         }
         return false;
       }
-      if (typeof value === 'string') {
-        return value.toLowerCase().includes(`${filter}`.toLowerCase());
-      }
 
-      if (typeof value === 'number') {
-        return value === +filter;
-      }
+      if (typeof value === 'string') return value.toLowerCase().includes(`${filter}`.toLowerCase());
+      if (typeof value === 'number') return value === +filter;
 
-      // If filter does not apply, return true by default (do not filter)
       return true;
     });
   });

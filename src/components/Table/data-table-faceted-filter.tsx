@@ -38,6 +38,20 @@ export function DataTableFacetedFilter<TData, TValue>({
   options,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues();
+  // Custom facets if keys is array then sum the equal value and remove duplicate
+  const customFacets = new Map();
+  for (const [key, value] of facets as any) {
+    if (Array.isArray(key)) {
+      for (const k of key) {
+        const prevValue = customFacets.get(k) || 0;
+        customFacets.set(k, prevValue + value);
+      }
+    } else {
+      const prevValue = customFacets.get(key) || 0;
+      customFacets.set(key, prevValue + value);
+    }
+  }
+  console.log(customFacets);
   const { filters, setFilters } = useFilters(Route.fullPath);
 
   const filterKey = column?.id as string;
@@ -121,11 +135,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                     </div>
                     {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
                     <span>{option.label}</span>
-                    {facets?.get(option.value) && (
-                      <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                        {facets.get(option.value)}
-                      </span>
-                    )}
+                    <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
+                      {customFacets.get(option.value)}
+                    </span>
                   </CommandItem>
                 );
               })}
