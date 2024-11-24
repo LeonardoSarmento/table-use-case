@@ -15,33 +15,29 @@ import {
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table';
 import { useState } from 'react';
-import { TaskFilters } from '@/api/task';
-import { DataTableToolbar } from './Table/users/user-table-toolbar';
-import { DataTablePagination } from './Table/common/data-table-pagination';
+import { DataTablePagination } from './data-table-pagination';
+import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
 
-export const DEFAULT_PAGE_INDEX = 0;
-export const DEFAULT_PAGE_SIZE = 10;
-
-type Props<T extends Record<string, string | number | string[]>> = {
+type Props<T extends Record<string, string | number | string[] | number[]>> = {
   data: T[];
   columns: ColumnDef<T>[];
   pagination: PaginationState;
   paginationOptions: Pick<PaginationOptions, 'onPaginationChange' | 'rowCount'>;
-  filters: TaskFilters;
-  onFilterChange: (dataFilters: Partial<T>) => void;
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
+  toolbar?: ({ table }: DataTableToolbarProps<T>) => React.JSX.Element;
 };
 
-export default function DataTableExample<T extends Record<string, string | number | string[]>>({
+export default function DataTable<T extends Record<string, string | number | string[] | number[]>>({
   data,
   columns,
   pagination,
   paginationOptions,
   sorting,
   onSortingChange,
+  toolbar,
 }: Props<T>) {
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -69,8 +65,8 @@ export default function DataTableExample<T extends Record<string, string | numbe
   });
 
   return (
-    <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
-      <DataTableToolbar table={table} />
+    <div className="flex flex-col gap-3 rounded-lg border p-2">
+      {toolbar && toolbar({ table: table })}
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -97,7 +93,7 @@ export default function DataTableExample<T extends Record<string, string | numbe
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                Sem resultados.
               </TableCell>
             </TableRow>
           )}

@@ -1,4 +1,3 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -6,29 +5,28 @@ import { useFilters } from '@services/hooks/useFilters';
 import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/components/table';
 import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
 import DataTableExample from '@/components/table-example';
-import { columnsExample } from '@/components/Table/columns-example';
-import { fetchTasks, TaskFilters } from '@/api/task';
+import { userColumns } from '@components/Table/users/user-columns';
+import { UserFilters } from '@services/types/tables/User';
+import { queryOptionsUserTable } from '@services/hooks/useTableUser';
 
 export const Route = createFileRoute('/shadcnTable')({
-  validateSearch: () => ({}) as TaskFilters,
+  loaderDeps: ({ search: filters }) => filters,
+  loader: ({ context: { queryClient }, deps: filters }) => queryClient.ensureQueryData(queryOptionsUserTable(filters)),
+  validateSearch: () => ({}) as UserFilters,
   component: DataTableComponent,
 });
 
 function DataTableComponent() {
   const { filters, resetFilters, setFilters } = useFilters(Route.fullPath);
 
-  const { data } = useQuery({
-    queryKey: ['tasks', filters],
-    queryFn: () => fetchTasks(filters),
-    placeholderData: keepPreviousData,
-  });
+  const data = Route.useLoaderData();
 
   const paginationState = {
     pageIndex: filters.pageIndex ?? DEFAULT_PAGE_INDEX,
     pageSize: filters.pageSize ?? DEFAULT_PAGE_SIZE,
   };
   const sortingState = sortByToState(filters.sortBy);
-  const columns = useMemo(() => columnsExample, []);
+  const columns = useMemo(() => userColumns, []);
 
   return (
     <>

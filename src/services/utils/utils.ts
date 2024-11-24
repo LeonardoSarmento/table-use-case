@@ -1,3 +1,5 @@
+import { Filters } from "@/api/types";
+
 export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -19,4 +21,11 @@ export function getRandomNumberWithDecimals(min = 0, max = 20000): number {
 
   // Add the minimum value to get the final random number within range
   return withDecimals + min;
+}
+
+export function IsColumnFiltered<T>(filters: Filters<T>) {
+  return (
+    Object.keys(filters).filter((filter) => filter !== 'pageSize' && filter !== 'pageIndex' && filter !== 'selectedIds')
+      .length > 0
+  );
 }

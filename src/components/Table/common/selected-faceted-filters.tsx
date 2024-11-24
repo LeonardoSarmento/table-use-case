@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
-import { Column } from '@tanstack/react-table';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,73 +14,33 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import { useFilters } from '@services/hooks/useFilters';
-import { Filters } from '@/api/types';
-import { Route } from '@/routes/shadcnTable';
+import { Filters } from '@services/types/tables/FilterExtension';
+import { SelectionType } from '@services/types/tables/FilterExtension';
 
-interface DataTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>;
-  title?: string;
-  options: {
-    label: string;
-    value: string;
-    icon?: React.ComponentType<{ className?: string }>;
-  }[];
-}
-function isFilterKey<T>(key: any, filters: Filters<T>): key is keyof Filters<T> {
-  return key in filters;
-}
+type SelectedIdsFacetedFilterProps<T> = {
+  title: string;
+  filters: Filters<T>;
+  setFilters: (filters: Filters<T>) => Promise<void>;
+  options: { value: SelectionType; label: string }[];
+};
 
-export function DataTableFacetedFilter<TData, TValue>({
-  column,
-  title,
-  options,
-}: DataTableFacetedFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues();
-  // Custom facets if keys is array then sum the equal value and remove duplicate
-  const customFacets = new Map();
-  for (const [key, value] of facets as any) {
-    if (Array.isArray(key)) {
-      for (const k of key) {
-        const prevValue = customFacets.get(k) || 0;
-        customFacets.set(k, prevValue + value);
-      }
+export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, options }: SelectedIdsFacetedFilterProps<T>) {
+  const selectedValues = React.useMemo(() => new Set(filters.selection || []), [filters.selection]);
+
+  const handleSelect = (value: SelectionType) => {
+    const newSelectedValues = new Set(selectedValues);
+    if (newSelectedValues.has(value)) {
+      newSelectedValues.delete(value);
     } else {
-      const prevValue = customFacets.get(key) || 0;
-      customFacets.set(key, prevValue + value);
+      newSelectedValues.add(value);
     }
-  }
-  console.log(customFacets);
-  const { filters, setFilters } = useFilters(Route.fullPath);
 
-  const filterKey = column?.id as string;
-
-  const filterValues =
-    isFilterKey(filterKey, filters) && Array.isArray(filters[filterKey]) ? (filters[filterKey] as string[]) : [];
-
-  const [selectedValues, setSelectedValues] = React.useState(new Set(filterValues));
-
-  React.useEffect(() => {
-    setSelectedValues(new Set(filterValues));
-  }, [filters, column?.id]);
-
-  const handleSelect = (value: string) => {
-    setSelectedValues((prev) => {
-      const newSelectedValues = new Set(prev);
-      if (newSelectedValues.has(value)) {
-        newSelectedValues.delete(value);
-      } else {
-        newSelectedValues.add(value);
-      }
-      const filterValues = Array.from(newSelectedValues);
-      setFilters({ [column?.id as string]: filterValues.length ? filterValues : undefined });
-      return newSelectedValues;
-    });
+    const updatedSelection = Array.from(newSelectedValues) as Filters<T>['selection'];
+    setFilters({ ...filters, selection: updatedSelection });
   };
 
   const handleClearFilters = () => {
-    setSelectedValues(new Set());
-    setFilters({ [column?.id as string]: [] });
+    setFilters({ ...filters, selection: undefined });
   };
 
   return (
@@ -90,7 +49,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Button variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
-          {selectedValues?.size > 0 && (
+          {selectedValues.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
               <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
@@ -99,7 +58,7 @@ export function DataTableFacetedFilter<TData, TValue>({
               <div className="hidden space-x-1 lg:flex">
                 {selectedValues.size > 2 ? (
                   <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {selectedValues.size} selected
+                    {selectedValues.size} selecionados
                   </Badge>
                 ) : (
                   options
@@ -119,7 +78,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>Opção não encontrada.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
@@ -133,11 +92,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     >
                       <CheckIcon className={cn('h-4 w-4')} />
                     </div>
-                    {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
                     <span>{option.label}</span>
-                    <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                      {customFacets.get(option.value)}
-                    </span>
                   </CommandItem>
                 );
               })}
@@ -147,7 +102,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem onSelect={handleClearFilters} className="justify-center text-center">
-                    Clear filters
+                    Limpar filtragem
                   </CommandItem>
                 </CommandGroup>
               </>
