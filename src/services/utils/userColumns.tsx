@@ -1,14 +1,6 @@
-import { ColumnDef, RowData } from '@tanstack/react-table';
+import { ColumnDef } from '@tanstack/react-table';
 import { User } from '@/api/user';
 import { Checkbox } from '@/components/ui/checkbox';
-
-declare module '@tanstack/react-table' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, TValue> {
-    filterKey?: keyof TData;
-    filterVariant?: 'text' | 'number';
-  }
-}
 
 export const USER_COLUMNS: ColumnDef<User>[] = [
   {
