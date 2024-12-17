@@ -64,7 +64,7 @@ export const userColumns: ColumnDef<UserTableType>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
     cell: ({ row }) => {
       const rolesArray = row.getValue('role') as string[];
-      const role = roles.find((roles) => rolesArray.includes(roles.value));
+      const role = roles.find((roles) => rolesArray.includes(roles.id));
 
       if (!role) {
         return null;
