@@ -14,24 +14,23 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import { Filters } from '@services/types/tables/FilterExtension';
 import { DataTableFacetedFilterProps } from '@services/types/tables/DataTableComponents';
+import { useFilters } from '@services/hooks/useFilters';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 
-function isFilterKey<T>(key: any, filters: Filters<T>): key is keyof Filters<T> {
-  return key in filters;
-}
-
-export function DataTableFacetedFilter<TData, TValue, T>({
+type FacetsType = Map<string | string[], number>;
+export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<RegisteredRouter['routeTree']>>({
   column,
   title,
   options,
-  filters,
-  setFilters,
-}: DataTableFacetedFilterProps<TData, TValue, T>) {
-  const facets = column?.getFacetedUniqueValues();
-  // Custom facets if keys is array then sum the equal value and remove duplicate
-  const customFacets = new Map();
-  for (const [key, value] of facets as any) {
+  routeId,
+}: DataTableFacetedFilterProps<TData, TValue, R>) {
+  const { filters, setFilters } = useFilters<R>(routeId);
+  const facets = column?.getFacetedUniqueValues() as FacetsType;
+
+  const customFacets = new Map<string, number>();
+
+  for (const [key, value] of facets) {
     if (Array.isArray(key)) {
       for (const k of key) {
         const prevValue = customFacets.get(k) || 0;
@@ -43,16 +42,15 @@ export function DataTableFacetedFilter<TData, TValue, T>({
     }
   }
 
-  const filterKey = column?.id as string;
+  const filterKey = column?.id as keyof typeof filters;
 
-  const filterValues =
-    isFilterKey(filterKey, filters) && Array.isArray(filters[filterKey]) ? (filters[filterKey] as string[]) : [];
+  const filterValues: string[] = filters[filterKey] as string[];
 
   const [selectedValues, setSelectedValues] = React.useState(new Set(filterValues));
 
   React.useEffect(() => {
     setSelectedValues(new Set(filterValues));
-  }, [filters]);
+  }, [filterValues]);
 
   const handleSelect = (value: string) => {
     setSelectedValues((prev) => {
@@ -62,15 +60,26 @@ export function DataTableFacetedFilter<TData, TValue, T>({
       } else {
         newSelectedValues.add(value);
       }
-      const filterValues = Array.from(newSelectedValues);
-      setFilters({ [column?.id as string]: filterValues.length ? filterValues : undefined } as typeof filters);
+
+      const updatedFilterValues = Array.from(newSelectedValues);
+
+      const updatedFilters = {
+        ...filters,
+        [filterKey]: updatedFilterValues.length ? updatedFilterValues : undefined,
+      } as Partial<typeof filters>;
+
+      setFilters(updatedFilters);
+
       return newSelectedValues;
     });
   };
 
   const handleClearFilters = () => {
     setSelectedValues(new Set());
-    setFilters({ [column?.id as string]: [] } as typeof filters);
+
+    setFilters({
+      [filterKey]: undefined,
+    } as Partial<typeof filters>);
   };
 
   return (
@@ -92,9 +101,9 @@ export function DataTableFacetedFilter<TData, TValue, T>({
                   </Badge>
                 ) : (
                   options
-                    .filter((option) => selectedValues.has(option.value))
+                    .filter((option) => selectedValues.has(option.id))
                     .map((option) => (
-                      <Badge variant="secondary" key={option.value} className="rounded-sm px-1 font-normal">
+                      <Badge variant="secondary" key={option.id} className="rounded-sm px-1 font-normal">
                         {option.label}
                       </Badge>
                     ))
@@ -111,9 +120,9 @@ export function DataTableFacetedFilter<TData, TValue, T>({
             <CommandEmpty>Opção não encontrada.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
-                const isSelected = selectedValues.has(option.value);
+                const isSelected = selectedValues.has(option.id);
                 return (
-                  <CommandItem key={option.value} onSelect={() => handleSelect(option.value)}>
+                  <CommandItem key={option.id} onSelect={() => handleSelect(option.id)}>
                     <div
                       className={cn(
                         'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
@@ -125,7 +134,7 @@ export function DataTableFacetedFilter<TData, TValue, T>({
                     {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
                     <span>{option.label}</span>
                     <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                      {customFacets.get(option.value)}
+                      {customFacets.get(option.id)}
                     </span>
                   </CommandItem>
                 );

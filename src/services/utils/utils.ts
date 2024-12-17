@@ -1,4 +1,6 @@
-import { Filters } from "@/api/types";
+import { Filters } from '@/api/types';
+import { DateLocaleType } from '@services/types/Date';
+import { intlFormat } from 'date-fns';
 
 export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -27,5 +29,25 @@ export function IsColumnFiltered<T>(filters: Filters<T>) {
   return (
     Object.keys(filters).filter((filter) => filter !== 'pageSize' && filter !== 'pageIndex' && filter !== 'selectedIds')
       .length > 0
+  );
+}
+
+export function dateFormatter({
+  date,
+  customLocale = 'pt-BR',
+}: {
+  date: string | number | Date;
+  customLocale?: DateLocaleType;
+}) {
+  return intlFormat(
+    date,
+    {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    },
+    {
+      locale: customLocale,
+    },
   );
 }

@@ -8,10 +8,6 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  OnChangeFn,
-  PaginationOptions,
-  PaginationState,
-  SortingState,
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
@@ -19,43 +15,58 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useState } from 'react';
 import { DataTablePagination } from './data-table-pagination';
 import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
+import { useFilters } from '@services/hooks/useFilters';
+import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { Filters, PaginatedData } from '@services/types/tables/FilterExtension';
 
-type Props<T extends Record<string, string | number | string[] | number[]>> = {
-  data: T[];
+export const DEFAULT_PAGE_INDEX = 0;
+export const DEFAULT_PAGE_SIZE = 10;
+
+type Props<
+  T extends Record<string, string | number | string[] | number[] | Date>,
+  R extends RouteIds<RegisteredRouter['routeTree']>,
+> = {
+  data: PaginatedData<T>;
   columns: ColumnDef<T>[];
-  pagination: PaginationState;
-  paginationOptions: Pick<PaginationOptions, 'onPaginationChange' | 'rowCount'>;
-  sorting: SortingState;
-  onSortingChange: OnChangeFn<SortingState>;
   toolbar?: ({ table }: DataTableToolbarProps<T>) => React.JSX.Element;
+  routeId: R;
 };
 
-export default function DataTable<T extends Record<string, string | number | string[] | number[]>>({
-  data,
-  columns,
-  pagination,
-  paginationOptions,
-  sorting,
-  onSortingChange,
-  toolbar,
-}: Props<T>) {
+export default function DataTable<
+  T extends Record<string, string | number | string[] | number[] | Date>,
+  R extends RouteIds<RegisteredRouter['routeTree']>,
+>({ data, columns, toolbar, routeId }: Props<T, R>) {
+  const { filters, setFilters } = useFilters<R>(routeId);
+  const { pageIndex, pageSize, sortBy } = filters as Filters<T>;
+  const paginationState = {
+    pageIndex: pageIndex ?? DEFAULT_PAGE_INDEX,
+    pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+  };
+  const sortingState = sortByToState(sortBy);
+
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
-    data,
+    data: data.result ?? [],
     columns,
-    state: { pagination, sorting, columnFilters, columnVisibility, rowSelection },
-    onSortingChange,
-    ...paginationOptions,
+    state: { pagination: paginationState, sorting: sortingState, columnFilters, columnVisibility, rowSelection },
+    onSortingChange: (updaterOrValue) => {
+      const newSortingState = typeof updaterOrValue === 'function' ? updaterOrValue(sortingState) : updaterOrValue;
+      return setFilters({ sortBy: stateToSortBy(newSortingState) } as typeof filters);
+    },
+    onPaginationChange: (pagination) => {
+      const updater = typeof pagination === 'function' ? pagination(paginationState) : pagination;
+      setFilters(updater as typeof filters);
+    },
+    rowCount: data.rowCount,
     enableRowSelection: true,
+    manualPagination: true,
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    // manualFiltering: true,
-    // manualSorting: true,
-    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

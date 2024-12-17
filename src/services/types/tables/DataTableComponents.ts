@@ -1,5 +1,5 @@
 import { Column, Row, Table } from '@tanstack/react-table';
-import { Filters } from './FilterExtension';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 
 export interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -11,14 +11,13 @@ export interface DataTableRowActionsProps<TData> {
 
 export type DataTableToolbarActionsProps = React.HTMLAttributes<HTMLDivElement>;
 
-export interface DataTableFacetedFilterProps<TData, TValue, T> {
+export interface DataTableFacetedFilterProps<TData, TValue, R extends RouteIds<RegisteredRouter['routeTree']>> {
   column?: Column<TData, TValue>;
   title?: string;
   options: {
     label: string;
-    value: string;
+    id: string;
     icon?: React.ComponentType<{ className?: string }>;
   }[];
-  filters: Filters<T>;
-  setFilters: (filters: Filters<T>) => Promise<void>;
+  routeId: R;
 }

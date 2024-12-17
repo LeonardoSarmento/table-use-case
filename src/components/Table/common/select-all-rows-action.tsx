@@ -16,7 +16,7 @@ export function SelectAllCheckbox<T, R extends RouteIds<RegisteredRouter['routeT
     if (value) {
       setFilters({
         ...filters,
-        selectedIds: allIds,
+        selectedIds: allIds.length > 0 ? allIds : undefined,
       });
       table.toggleAllPageRowsSelected(true);
     } else {

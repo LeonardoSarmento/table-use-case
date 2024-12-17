@@ -9,6 +9,7 @@ import { CheckedRow } from '../common/check-row-action';
 import { ActionHeader } from '../common/data-table-action-header';
 import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { GetDataTableColumnHeaderName } from '@services/utils/headerName';
+import { dateFormatter } from '@services/utils/utils';
 
 const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
 
@@ -79,6 +80,18 @@ export const userColumns: ColumnDef<UserTableType>[] = [
       return value.some((v: string) => rowValue.includes(v));
     },
     meta: { name: 'Perfil' },
+  },
+  {
+    accessorKey: 'birthday',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
+    cell: ({ row }) => {
+      return (
+        <div className="flex justify-center space-x-2">
+          <span className="truncate font-medium">{dateFormatter({ date: row.getValue('birthday') })}</span>
+        </div>
+      );
+    },
+    meta: { filterKey: 'birthday', name: 'Data de Nascimento' },
   },
   {
     id: 'actions',

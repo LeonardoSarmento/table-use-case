@@ -3,22 +3,22 @@ import { selectionSchema } from '@services/types/tables/FilterExtension';
 
 export const roles = [
   {
-    value: roleSchema.Enum.ADMIN,
+    id: roleSchema.Enum.ADMIN,
     label: 'Administrador',
   },
   {
-    value: roleSchema.Enum.OPERATOR,
+    id: roleSchema.Enum.OPERATOR,
     label: 'Operador',
   },
 ];
 
-export const selection = [
+export const selectionOptions = [
   {
-    value: selectionSchema.Enum.SELECTED,
+    id: selectionSchema.Enum.SELECTED,
     label: 'Selecionados',
   },
   {
-    value: selectionSchema.Enum.NOT_SELECTED,
+    id: selectionSchema.Enum.NOT_SELECTED,
     label: 'Não selecionados',
   },
 ];

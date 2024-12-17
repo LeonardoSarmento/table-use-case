@@ -15,4 +15,5 @@ export type SelectedIdsType = z.infer<typeof selectedIds>;
 export type PaginationParams = PaginationState;
 export type SortParams = { sortBy: `${string}.${'asc' | 'desc'}` };
 export type SelectionParams = { selection: SelectionType[]; selectedIds: SelectedIdsType };
-export type Filters<T> = Partial<T & PaginationParams & SortParams & SelectionParams>;
+export type DateParams = { from: Date; to: Date };
+export type Filters<T> = Partial<T & PaginationParams & SortParams & DateParams & SelectionParams>;

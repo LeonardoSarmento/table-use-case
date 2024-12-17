@@ -1,5 +1,5 @@
 import { useFilters } from '@services/hooks/useFilters';
-import { roles, selection } from '@services/constants/labels';
+import { roles } from '@services/constants/labels';
 import { UserFilters } from '@services/types/tables/User';
 import { UserToolbarAction } from './user-toolbar-actions';
 import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
@@ -10,6 +10,7 @@ import { DebouncedInput } from '@components/debouncedInput';
 import ResetButton from '../common/ResetButton';
 import { IsColumnFiltered } from '@services/utils/utils';
 import { DataTableViewOptions } from '../common/data-table-view-options';
+import { DatePickerWithRange } from '../common/data-table-date-selection';
 export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
 
@@ -22,7 +23,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
-        <SelectedIdsFacetedFilter title="Selecionados" filters={filters} setFilters={setFilters} options={selection} />
+        <SelectedIdsFacetedFilter title="Selecionados" routeId={userTableRouteId} />
         {table.getColumn('id')?.getCanFilter() && fieldMetaId?.filterKey !== undefined ? (
           <DebouncedInput
             className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
@@ -31,6 +32,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
                 [fieldMetaId.filterKey as keyof UserFilters['id']]: value,
               } as Partial<TData>);
             }}
+            step="1"
             onClick={(e) => e.stopPropagation()}
             type={fieldMetaId.filterVariant === 'number' ? 'number' : 'text'}
             placeholder="Procure pelo id"
@@ -70,11 +72,11 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
             column={table.getColumn('role')}
             title="Perfil"
             options={roles}
-            filters={filters}
-            setFilters={setFilters}
+            routeId={userTableRouteId}
           />
         )}
-        {isFiltered && <ResetButton routeId={userTableRouteId} selectedIds={filters.selectedIds} />}
+        <DatePickerWithRange routeId={userTableRouteId} />
+        {isFiltered && <ResetButton routeId={userTableRouteId} />}
       </div>
       <UserToolbarAction />
       <DataTableViewOptions table={table} />

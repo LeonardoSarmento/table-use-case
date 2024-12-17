@@ -2,12 +2,11 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFilters } from '@services/hooks/useFilters';
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/components/table';
-import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
-import DataTableExample from '@/components/table-example';
 import { userColumns } from '@components/Table/users/user-columns';
 import { UserFilters } from '@services/types/tables/User';
 import { queryOptionsUserTable } from '@services/hooks/useTableUser';
+import DataTable from '@components/Table/common/data-table';
+import { DataTableToolbar } from '@components/Table/users/user-table-toolbar';
 
 export const Route = createFileRoute('/shadcnTable')({
   loaderDeps: ({ search: filters }) => filters,
@@ -17,37 +16,14 @@ export const Route = createFileRoute('/shadcnTable')({
 });
 
 function DataTableComponent() {
-  const { filters, resetFilters, setFilters } = useFilters(Route.fullPath);
+  const { filters, resetFilters } = useFilters(Route.fullPath);
 
   const data = Route.useLoaderData();
-
-  const paginationState = {
-    pageIndex: filters.pageIndex ?? DEFAULT_PAGE_INDEX,
-    pageSize: filters.pageSize ?? DEFAULT_PAGE_SIZE,
-  };
-  const sortingState = sortByToState(filters.sortBy);
   const columns = useMemo(() => userColumns, []);
 
   return (
-    <>
-      <DataTableExample
-        data={data?.result ?? []}
-        columns={columns}
-        pagination={paginationState}
-        paginationOptions={{
-          onPaginationChange: (pagination) => {
-            setFilters(typeof pagination === 'function' ? pagination(paginationState) : pagination);
-          },
-          rowCount: data?.rowCount,
-        }}
-        filters={filters}
-        onFilterChange={(filters) => setFilters(filters)}
-        sorting={sortingState}
-        onSortingChange={(updaterOrValue) => {
-          const newSortingState = typeof updaterOrValue === 'function' ? updaterOrValue(sortingState) : updaterOrValue;
-          return setFilters({ sortBy: stateToSortBy(newSortingState) });
-        }}
-      />
+    <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
+      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbar} />
       <div className="flex items-center gap-2">
         {data?.rowCount} users found
         <Button
@@ -59,6 +35,6 @@ function DataTableComponent() {
         </Button>
       </div>
       <pre>{JSON.stringify(filters, null, 2)}</pre>
-    </>
+    </div>
   );
 }

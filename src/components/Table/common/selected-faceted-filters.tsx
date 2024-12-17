@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
+import { CheckIcon } from '@radix-ui/react-icons';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,16 +16,23 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { Filters } from '@services/types/tables/FilterExtension';
 import { SelectionType } from '@services/types/tables/FilterExtension';
+import { ListTodo } from 'lucide-react';
+import { useFilters } from '@services/hooks/useFilters';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { selectionOptions } from '@services/constants/labels';
 
-type SelectedIdsFacetedFilterProps<T> = {
-  title: string;
-  filters: Filters<T>;
-  setFilters: (filters: Filters<T>) => Promise<void>;
-  options: { value: SelectionType; label: string }[];
+type SelectedIdsFacetedFilterProps<R extends RouteIds<RegisteredRouter['routeTree']>> = {
+  title?: string;
+  routeId: R;
 };
 
-export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, options }: SelectedIdsFacetedFilterProps<T>) {
-  const selectedValues = React.useMemo(() => new Set(filters.selection || []), [filters.selection]);
+export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
+  title = 'Selecionados',
+  routeId,
+}: SelectedIdsFacetedFilterProps<R>) {
+  const { filters, setFilters } = useFilters(routeId);
+  const { selection } = filters as Filters<T>;
+  const selectedValues = React.useMemo(() => new Set(selection || []), [selection]);
 
   const handleSelect = (value: SelectionType) => {
     const newSelectedValues = new Set(selectedValues);
@@ -36,7 +43,7 @@ export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, option
     }
 
     const updatedSelection = Array.from(newSelectedValues) as Filters<T>['selection'];
-    setFilters({ ...filters, selection: updatedSelection });
+    setFilters({ ...filters, selection: updatedSelection?.length === 0 ? undefined : updatedSelection });
   };
 
   const handleClearFilters = () => {
@@ -47,7 +54,7 @@ export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, option
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircledIcon className="mr-2 h-4 w-4" />
+          <ListTodo className="mr-2 h-4 w-4" />
           {title}
           {selectedValues.size > 0 && (
             <>
@@ -61,10 +68,10 @@ export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, option
                     {selectedValues.size} selecionados
                   </Badge>
                 ) : (
-                  options
-                    .filter((option) => selectedValues.has(option.value))
+                  selectionOptions
+                    .filter((option) => selectedValues.has(option.id))
                     .map((option) => (
-                      <Badge variant="secondary" key={option.value} className="rounded-sm px-1 font-normal">
+                      <Badge variant="secondary" key={option.id} className="rounded-sm px-1 font-normal">
                         {option.label}
                       </Badge>
                     ))
@@ -80,13 +87,13 @@ export function SelectedIdsFacetedFilter<T>({ title, filters, setFilters, option
           <CommandList>
             <CommandEmpty>Opção não encontrada.</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => {
-                const isSelected = selectedValues.has(option.value);
+              {selectionOptions.map((option) => {
+                const isSelected = selectedValues.has(option.id);
                 return (
-                  <CommandItem key={option.value} onSelect={() => handleSelect(option.value)}>
+                  <CommandItem key={option.id} onSelect={() => handleSelect(option.id)}>
                     <div
                       className={cn(
-                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        'border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border',
                         isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible',
                       )}
                     >

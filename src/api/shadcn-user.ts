@@ -16,6 +16,7 @@ function makeData(amount: number): UserTableType[] {
         email: faker.internet.email(),
         company: faker.company.name(),
         role: [faker.helpers.enumValue(roleSchema.enum)],
+        birthday: faker.date.birthdate(),
       };
     });
 }
@@ -29,6 +30,8 @@ export async function fetchUsers(filtersAndPagination: UserFilters): Promise<Pag
     sortBy,
     selection,
     selectedIds,
+    from,
+    to,
     ...filters
   } = filtersAndPagination;
   let requestedData = fakeUserData.slice();
@@ -73,6 +76,31 @@ export async function fetchUsers(filtersAndPagination: UserFilters): Promise<Pag
   }
 
   const filteredData = requestedData.filter((user) => {
+    const birthday = new Date(user.birthday);
+    birthday.setUTCHours(0, 0, 0, 0); // Zera as horas, minutos, segundos e milissegundos
+
+    // Validar e aplicar os filtros de intervalo de datas
+    if (from && to) {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+
+      // Zerar as horas, minutos, segundos e milissegundos das datas
+      fromDate.setUTCHours(0, 0, 0, 0);
+      toDate.setUTCHours(23, 59, 59, 999); // Garantir o fim do dia
+
+      // Comparação inclusiva dentro do intervalo
+      if (birthday < fromDate || birthday > toDate) {
+        return false;
+      }
+    } else if (from) {
+      const fromDate = new Date(from);
+      fromDate.setUTCHours(0, 0, 0, 0);
+      if (birthday < fromDate) return false;
+    } else if (to) {
+      const toDate = new Date(to);
+      toDate.setUTCHours(23, 59, 59, 999);
+      if (birthday > toDate) return false;
+    }
     return Object.keys(filters).every((key) => {
       const filter = filters[key as keyof Omit<UserTableType, 'selectedIds'>];
       if (filter === undefined || filter === '') return true;

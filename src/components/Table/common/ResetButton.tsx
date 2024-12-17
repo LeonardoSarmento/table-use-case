@@ -8,15 +8,13 @@ import { Filters } from '@services/types/tables/FilterExtension';
 
 type ResetButtonType<R extends RouteIds<RegisteredRouter['routeTree']>, _> = {
   routeId: R;
-  selectedIds?: number[];
 } & HTMLAttributes<HTMLButtonElement>;
 export default function ResetButton<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
   routeId,
-  selectedIds,
   ...props
 }: ResetButtonType<R, T>) {
   const { filters } = useFilters(routeId);
-  const { pageIndex, pageSize } = filters as Filters<T>;
+  const { pageIndex, pageSize, selectedIds } = filters as Filters<T>;
   const navigate = useNavigate();
   return (
     <Button
@@ -24,7 +22,7 @@ export default function ResetButton<R extends RouteIds<RegisteredRouter['routeTr
       onClick={() =>
         navigate({
           to: '.',
-          search: { pageIndex, pageSize, selectedIds: selectedIds?.length === 0 ? undefined : selectedIds },
+          search: { pageIndex, pageSize, selectedIds: selectedIds && selectedIds.length > 0 ? selectedIds : undefined },
         })
       }
       className="h-8 px-2 lg:px-3"
