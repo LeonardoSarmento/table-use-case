@@ -23,94 +23,51 @@ Caso queira explorar o código, o repositório do projeto no `Github`: [Table-us
 
 Para popular a tabela, vamos utilizar o **@faker-js/faker** para gerar dados fictícios. Vamos criar 1000 registros de tarefas com campos determinados na tipagem para `Taks`. Isso simulará dados reais em uma aplicação de tarefas.
 
-Em `src/services/types/Task.ts` iremos criar um schema para **Tasks** utilizando o `Zod`:
+Em `src/services/types/User.ts` iremos criar um schema para **Users** utilizando o `Zod`:
 
 ```ts
 import { z } from 'zod';
+import { Filters, PaginatedData } from './FilterExtension';
+import { roleSchema } from '../Role';
 
-export const taskSchema = z.object({
+export const UserTable = z.object({
   id: z.number(),
-  title: z.string(),
-  label: z.string(),
-  status: z.string().array(),
-  priority: z.string().array(),
+  name: z.string(),
+  email: z.string(),
+  role: roleSchema.array(),
+  birthday: z.date(),
 });
 
-export type Task = z.infer<typeof taskSchema>;
+export type UserTableType = z.infer<typeof UserTable>;
+export type UserFilters = Filters<UserTableType>;
+export type UserRequest = PaginatedData<UserTableType>;
 ```
 
-E para as propriedades de valor pré-determinadas podemos criar em `src/constants/options.tsx`:
+E para as propriedades de valor pré-determinadas podemos criar em `src/services/constants/labels.tsx`:
 
 ```ts
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  ArrowUpIcon,
-  CheckCircledIcon,
-  CircleIcon,
-  CrossCircledIcon,
-  QuestionMarkCircledIcon,
-  StopwatchIcon,
-} from '@radix-ui/react-icons';
+import { roleSchema } from '@services/types/Role';
+import { selectionSchema } from '@services/types/tables/FilterExtension';
 
-export const labels = [
+export const roles = [
   {
-    value: 'bug',
-    label: 'Bug',
+    id: roleSchema.Enum.ADMIN,
+    label: 'Administrador',
   },
   {
-    value: 'feature',
-    label: 'Feature',
-  },
-  {
-    value: 'documentation',
-    label: 'Documentation',
+    id: roleSchema.Enum.OPERATOR,
+    label: 'Operador',
   },
 ];
 
-export const statuses = [
+export const selectionOptions = [
   {
-    value: 'backlog',
-    label: 'Backlog',
-    icon: QuestionMarkCircledIcon,
+    id: selectionSchema.Enum.SELECTED,
+    label: 'Selecionados',
   },
   {
-    value: 'todo',
-    label: 'Todo',
-    icon: CircleIcon,
-  },
-  {
-    value: 'in progress',
-    label: 'In Progress',
-    icon: StopwatchIcon,
-  },
-  {
-    value: 'done',
-    label: 'Done',
-    icon: CheckCircledIcon,
-  },
-  {
-    value: 'canceled',
-    label: 'Canceled',
-    icon: CrossCircledIcon,
-  },
-];
-
-export const priorities = [
-  {
-    label: 'Low',
-    value: 'low',
-    icon: ArrowDownIcon,
-  },
-  {
-    label: 'Medium',
-    value: 'medium',
-    icon: ArrowRightIcon,
-  },
-  {
-    label: 'High',
-    value: 'high',
-    icon: ArrowUpIcon,
+    id: selectionSchema.Enum.NOT_SELECTED,
+    label: 'Não selecionados',
   },
 ];
 ```
@@ -121,47 +78,75 @@ export const priorities = [
 
 ```ts
 import { faker } from '@faker-js/faker';
-import { Filters, PaginatedData } from './types';
-import { priorities, statuses } from '@/constants/options';
-import { Task } from '@services/types/Task';
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@services/constants/tables';
+import { roleSchema, RolesType } from '@services/types/Role';
+import { Filters, PaginatedData } from '@services/types/tables/FilterExtension';
+import { UserTableType } from '@services/types/tables/User';
 
-const DEFAULT_PAGE = 0;
-const DEFAULT_PAGE_SIZE = 10;
+export type UserFilters = Filters<UserTableType>;
 
-export type TaskFilters = Filters<Task>;
-
-function makeData(amount: number): Task[] {
+function makeData(amount: number): UserTableType[] {
   return Array(amount)
     .fill(0)
-    .map((_, index) => ({
-      id: index + 1,
-      label: faker.word.words(5),
-      title: faker.word.words(5),
-      priority: [faker.helpers.arrayElement(priorities).value],
-      status: [faker.helpers.arrayElement(statuses).value],
-    }));
+    .map((_, index) => {
+      return {
+        id: index + 1,
+        name: faker.person.fullName(),
+        email: faker.internet.email(),
+        company: faker.company.name(),
+        role: [faker.helpers.enumValue(roleSchema.enum)],
+        birthday: faker.date.birthdate(),
+      };
+    });
 }
 
-const data = makeData(1000);
-```
+export const fakeUserData = makeData(1000);
 
-## Função para Buscar Tarefas com Filtros e Paginação
+export async function fetchUsers(filtersAndPagination: UserFilters): Promise<PaginatedData<UserTableType>> {
+  const {
+    pageIndex = DEFAULT_PAGE_INDEX,
+    pageSize = DEFAULT_PAGE_SIZE,
+    sortBy,
+    selection,
+    selectedIds,
+    from,
+    to,
+    ...filters
+  } = filtersAndPagination;
+  let requestedData = fakeUserData.slice();
 
-A função `fetchTasks` será responsável por aplicar filtros, ordenação e paginação aos dados gerados, retornando apenas o subconjunto de dados necessário com base nos parâmetros fornecidos.
+  if (selection) {
+    requestedData = requestedData.filter((user) => {
+      // Check if we need to include both 'SELECTED' and 'NOT_SELECTED'
+      const isSelected = selection.includes('SELECTED'); // 'SELECTED' literal
+      const isNotSelected = selection.includes('NOT_SELECTED'); // 'NOT_SELECTED' literal
 
-### Código para Filtros e Paginação
+      // Check if the user's ID is in the selectedIds array (which indicates whether the row is selected or not)
+      const isUserSelected = user.id && selectedIds?.includes(user.id);
 
-```ts
-export async function fetchTasks(filtersAndPagination: TaskFilters): Promise<PaginatedData<Task>> {
-  const { pageIndex = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE, sortBy, ...filters } = filtersAndPagination;
-  const requestedData = data.slice();
+      // Behavior logic based on selection array:
+      if (selection.length === 0) {
+        // If the selection array is empty, return both selected and not selected rows
+        return true;
+      }
+      if (isSelected && isUserSelected) {
+        // If 'SELECTED' is in the selection and the user is selected, include this user
+        return true;
+      }
+      if (isNotSelected && !isUserSelected) {
+        // If 'NOT_SELECTED' is in the selection and the user is not selected, include this user
+        return true;
+      }
+      // If none of the above conditions match, exclude this user
+      return false;
+    });
+  }
 
-  // Ordenação
   if (sortBy) {
     const [field, order] = sortBy.split('.');
     requestedData.sort((a, b) => {
-      const aValue = a[field as keyof Task];
-      const bValue = b[field as keyof Task];
+      const aValue = a[field as keyof Omit<UserTableType, 'selectedIds'>];
+      const bValue = b[field as keyof Omit<UserTableType, 'selectedIds'>];
 
       if (aValue === bValue) return 0;
       if (order === 'asc') return aValue > bValue ? 1 : -1;
@@ -169,18 +154,42 @@ export async function fetchTasks(filtersAndPagination: TaskFilters): Promise<Pag
     });
   }
 
-  // Filtragem
-  const filteredData = requestedData.filter((task) => {
+  const filteredData = requestedData.filter((user) => {
+    const birthday = new Date(user.birthday);
+    birthday.setUTCHours(0, 0, 0, 0); // Zera as horas, minutos, segundos e milissegundos
+
+    // Validar e aplicar os filtros de intervalo de datas
+    if (from && to) {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+
+      // Zerar as horas, minutos, segundos e milissegundos das datas
+      fromDate.setUTCHours(0, 0, 0, 0);
+      toDate.setUTCHours(23, 59, 59, 999); // Garantir o fim do dia
+
+      // Comparação inclusiva dentro do intervalo
+      if (birthday < fromDate || birthday > toDate) {
+        return false;
+      }
+    } else if (from) {
+      const fromDate = new Date(from);
+      fromDate.setUTCHours(0, 0, 0, 0);
+      if (birthday < fromDate) return false;
+    } else if (to) {
+      const toDate = new Date(to);
+      toDate.setUTCHours(23, 59, 59, 999);
+      if (birthday > toDate) return false;
+    }
     return Object.keys(filters).every((key) => {
-      const filter = filters[key as keyof Task];
+      const filter = filters[key as keyof Omit<UserTableType, 'selectedIds'>];
       if (filter === undefined || filter === '') return true;
 
-      const value = task[key as keyof Task];
+      const value = user[key as keyof Omit<UserTableType, 'selectedIds'>];
 
-      if (key === 'status' || key === 'priority') {
+      if (key === 'role') {
         if (Array.isArray(filter)) {
           if (filter.length === 0) return true;
-          return Array.isArray(value) ? value.some((val) => filter.includes(val)) : filter.includes(value as string);
+          return Array.isArray(value) ? value.some((val) => filter.includes(val)) : filter.includes(value as RolesType);
         }
         return false;
       }
@@ -209,22 +218,31 @@ Aqui está o tipo genérico `Filters` que usamos para combinar os filtros dos da
 
 ```ts
 import { PaginationState } from '@tanstack/react-table';
+import { z } from 'zod';
 
 export type PaginatedData<T> = {
   result: T[];
   rowCount: number;
 };
 
+export const selectionSchema = z.enum(['SELECTED', 'NOT_SELECTED']);
+export type SelectionType = z.infer<typeof selectionSchema>;
+
+export const selectedIds = z.number().array().optional();
+export type SelectedIdsType = z.infer<typeof selectedIds>;
+
 export type PaginationParams = PaginationState;
 export type SortParams = { sortBy: `${string}.${'asc' | 'desc'}` };
-export type Filters<T> = Partial<T & PaginationParams & SortParams>;
+export type SelectionParams = { selection: SelectionType[]; selectedIds: SelectedIdsType };
+export type DateParams = { from: Date; to: Date };
+export type Filters<T> = Partial<T & PaginationParams & SortParams & DateParams & SelectionParams>;
 ```
 
 ## Componente da Data Table
 
-A seguir, criamos o componente `DataTableExample` que será responsável por exibir os dados, aplicar a paginação e os filtros, e fornecer a funcionalidade de ordenação. Usamos o **TanStack Table** para gerenciar o comportamento da tabela.
+A seguir, criamos o componente `DataTable` que será responsável por exibir os dados, aplicar a paginação e os filtros, e fornecer a funcionalidade de ordenação. Usamos o **TanStack Table** para gerenciar o comportamento da tabela.
 
-### Código do Componente `DataTableExample`
+### Código do Componente `DataTable`
 
 ```tsx
 import {
@@ -237,56 +255,65 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  OnChangeFn,
-  PaginationOptions,
-  PaginationState,
-  SortingState,
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { DataTablePagination } from './Table/data-table-pagination';
-import { DataTableToolbar } from './Table/data-table-toolbar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table';
 import { useState } from 'react';
-import { TaskFilters } from '@/api/task';
+import { DataTablePagination } from './data-table-pagination';
+import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
+import { useFilters } from '@services/hooks/useFilters';
+import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { Filters, PaginatedData } from '@services/types/tables/FilterExtension';
 
 export const DEFAULT_PAGE_INDEX = 0;
 export const DEFAULT_PAGE_SIZE = 10;
 
-type Props<T extends Record<string, string | number | string[]>> = {
-  data: T[];
+type Props<
+  T extends Record<string, string | number | string[] | number[] | Date>,
+  R extends RouteIds<RegisteredRouter['routeTree']>,
+> = {
+  data: PaginatedData<T>;
   columns: ColumnDef<T>[];
-  pagination: PaginationState;
-  paginationOptions: Pick<PaginationOptions, 'onPaginationChange' | 'rowCount'>;
-  filters: TaskFilters;
-  onFilterChange: (dataFilters: Partial<T>) => void;
-  sorting: SortingState;
-  onSortingChange: OnChangeFn<SortingState>;
+  toolbar?: ({ table }: DataTableToolbarProps<T>) => React.JSX.Element;
+  routeId: R;
 };
 
-export default function DataTableExample<T extends Record<string, string | number | string[]>>({
-  data,
-  columns,
-  pagination,
-  paginationOptions,
-  sorting,
-  onSortingChange,
-}: Props<T>) {
+export default function DataTable<
+  T extends Record<string, string | number | string[] | number[] | Date>,
+  R extends RouteIds<RegisteredRouter['routeTree']>,
+>({ data, columns, toolbar, routeId }: Props<T, R>) {
+  const { filters, setFilters } = useFilters<R>(routeId);
+  const { pageIndex, pageSize, sortBy } = filters as Filters<T>;
+  const paginationState = {
+    pageIndex: pageIndex ?? DEFAULT_PAGE_INDEX,
+    pageSize: pageSize ?? DEFAULT_PAGE_SIZE,
+  };
+  const sortingState = sortByToState(sortBy);
+
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
-    data,
+    data: data.result ?? [],
     columns,
-    state: { pagination, sorting, columnFilters, columnVisibility, rowSelection },
-    onSortingChange,
-    ...paginationOptions,
+    state: { pagination: paginationState, sorting: sortingState, columnFilters, columnVisibility, rowSelection },
+    onSortingChange: (updaterOrValue) => {
+      const newSortingState = typeof updaterOrValue === 'function' ? updaterOrValue(sortingState) : updaterOrValue;
+      return setFilters({ sortBy: stateToSortBy(newSortingState) } as typeof filters);
+    },
+    onPaginationChange: (pagination) => {
+      const updater = typeof pagination === 'function' ? pagination(paginationState) : pagination;
+      setFilters(updater as typeof filters);
+    },
+    rowCount: data.rowCount,
     enableRowSelection: true,
+    manualPagination: true,
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    manualPagination: true,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -296,8 +323,8 @@ export default function DataTableExample<T extends Record<string, string | numbe
   });
 
   return (
-    <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
-      <DataTableToolbar table={table} />
+    <div className="flex flex-col gap-3 rounded-lg border p-2">
+      {toolbar && toolbar({ table: table })}
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -324,7 +351,7 @@ export default function DataTableExample<T extends Record<string, string | numbe
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                Sem resultados.
               </TableCell>
             </TableRow>
           )}
@@ -345,6 +372,8 @@ import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRigh
 import { Table } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Pagination, PaginationContent, PaginationItem } from '@components/ui/pagination';
+import { Separator } from '@components/ui/separator';
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
@@ -352,74 +381,86 @@ interface DataTablePaginationProps<TData> {
 
 export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="flex-1 text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s) selected.
-      </div>
-      <div className="flex items-center space-x-6 lg:space-x-8">
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => {
-              table.setPageSize(Number(value));
-            }}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Pagination className="w-full">
+      <PaginationContent className="flex w-full justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} de {table.getFilteredRowModel().rows.length} linha(s)
+          selecionadas.
         </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Linhas por página</p>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium text-nowrap">
+            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+          </div>
+          <Separator orientation="vertical" />
+          <div className="flex items-center space-x-2">
+            <PaginationItem>
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Ir para primeira página</span>
+                <DoubleArrowLeftIcon className="h-4 w-4" />
+              </Button>
+            </PaginationItem>
+            <PaginationItem>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Anterior</span>
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+            </PaginationItem>
+            <PaginationItem>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Próximo</span>
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+            </PaginationItem>
+            <PaginationItem>
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Ir para última página</span>
+                <DoubleArrowRightIcon className="h-4 w-4" />
+              </Button>
+            </PaginationItem>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <span className="sr-only">Go to first page</span>
-            <DoubleArrowLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <span className="sr-only">Go to previous page</span>
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-8 w-8 p-0"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <span className="sr-only">Go to next page</span>
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            <span className="sr-only">Go to last page</span>
-            <DoubleArrowRightIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
+      </PaginationContent>
+    </Pagination>
   );
 }
 
@@ -428,67 +469,90 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
 E o componente `DataTableToolbar` para gerenciamento dos filtros aplicados pelo usuário:
 
 ```ts
-import { Cross2Icon } from '@radix-ui/react-icons';
-import { Table } from '@tanstack/react-table';
-import { Button } from '@/components/ui/button';
-import { DataTableViewOptions } from '@/components/Table/data-table-view-options';
-import { priorities, statuses } from '@/constants/options';
-import { DataTableFacetedFilter } from './data-table-faceted-filter';
-import { DebouncedInput } from '../debouncedInput';
-import { TaskFilters } from '@/api/task';
-import { useNavigate } from '@tanstack/react-router';
 import { useFilters } from '@services/hooks/useFilters';
-import { Route } from '@/routes/shadcnTable';
-
-interface DataTableToolbarProps<TData> {
-  table: Table<TData>;
-}
+import { roles } from '@services/constants/labels';
+import { UserFilters } from '@services/types/tables/User';
+import { UserToolbarAction } from './user-toolbar-actions';
+import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
+import { DataTableFacetedFilter } from '../common/data-table-faceted-filter';
+import { SelectedIdsFacetedFilter } from '../common/selected-faceted-filters';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { DebouncedInput } from '@components/debouncedInput';
+import ResetButton from '../common/ResetButton';
+import { IsColumnFiltered } from '@services/utils/utils';
+import { DataTableViewOptions } from '../common/data-table-view-options';
+import { DatePickerWithRange } from '../common/data-table-date-selection';
+import { DataTableExportToCSV } from '../common/data-table-export-to-csv';
 
 export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
-  const { filters, setFilters } = useFilters(Route.fullPath);
-  const isFiltered =
-    Object.keys(filters).filter((filter) => filter !== 'pageSize' && filter !== 'pageIndex').length > 0;
-  const fieldMeta = table.getColumn('title')?.columnDef.meta;
-  const navigate = useNavigate();
+  const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
+
+  const { filters, setFilters } = useFilters(userTableRouteId);
+  const isFiltered = IsColumnFiltered(filters);
+  const fieldMetaId = table.getColumn('id')?.columnDef.meta;
+  const fieldMetaName = table.getColumn('name')?.columnDef.meta;
+  const fieldMetaEmail = table.getColumn('email')?.columnDef.meta;
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
-        {table.getColumn('title')?.getCanFilter() && fieldMeta?.filterKey !== undefined ? (
+        <SelectedIdsFacetedFilter title="Selecionados" routeId={userTableRouteId} />
+        {table.getColumn('id')?.getCanFilter() && fieldMetaId?.filterKey !== undefined ? (
           <DebouncedInput
-            className="h-8 w-[150px] rounded border shadow lg:w-[250px]"
+            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
             onChange={(value) => {
               setFilters({
-                [fieldMeta.filterKey as keyof TaskFilters]: value,
+                [fieldMetaId.filterKey as keyof UserFilters['id']]: value,
+              } as Partial<TData>);
+            }}
+            step="1"
+            onClick={(e) => e.stopPropagation()}
+            type={fieldMetaId.filterVariant === 'number' ? 'number' : 'text'}
+            placeholder="Procure pelo id"
+            value={filters[fieldMetaId.filterKey as keyof UserFilters['id']] ?? ''}
+          />
+        ) : null}
+        {table.getColumn('name')?.getCanFilter() && fieldMetaName?.filterKey !== undefined ? (
+          <DebouncedInput
+            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
+            onChange={(value) => {
+              setFilters({
+                [fieldMetaName.filterKey as keyof UserFilters]: value,
               } as Partial<TData>);
             }}
             onClick={(e) => e.stopPropagation()}
-            type={fieldMeta.filterVariant === 'number' ? 'number' : 'text'}
-            placeholder="Search a task by title..."
-            value={(filters[fieldMeta.filterKey as keyof TaskFilters] as string) ?? ''}
+            type={fieldMetaName.filterVariant === 'number' ? 'number' : 'text'}
+            placeholder="Procure pelo nome"
+            value={filters[fieldMetaName.filterKey as keyof UserFilters['name']] ?? ''}
           />
         ) : null}
-        {table.getColumn('status') && (
-          <DataTableFacetedFilter column={table.getColumn('status')} title="Status" options={statuses} />
+        {table.getColumn('email')?.getCanFilter() && fieldMetaEmail?.filterKey !== undefined ? (
+          <DebouncedInput
+            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
+            onChange={(value) => {
+              setFilters({
+                [fieldMetaEmail.filterKey as keyof UserFilters]: value,
+              } as Partial<TData>);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            type={fieldMetaEmail.filterVariant === 'number' ? 'number' : 'text'}
+            placeholder="Procure pelo email"
+            value={filters[fieldMetaEmail.filterKey as keyof UserFilters['email']] ?? ''}
+          />
+        ) : null}
+        {table.getColumn('role') && (
+          <DataTableFacetedFilter
+            column={table.getColumn('role')}
+            title="Perfil"
+            options={roles}
+            routeId={userTableRouteId}
+          />
         )}
-        {table.getColumn('priority') && (
-          <DataTableFacetedFilter column={table.getColumn('priority')} title="Priority" options={priorities} />
-        )}
-        {isFiltered && (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              navigate({
-                to: '.',
-                search: { pageIndex: filters.pageIndex, pageSize: filters.pageSize },
-              })
-            }
-            className="h-8 px-2 lg:px-3"
-          >
-            Reset
-            <Cross2Icon className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+        <DatePickerWithRange routeId={userTableRouteId} />
+        {isFiltered && <ResetButton routeId={userTableRouteId} />}
       </div>
+      <UserToolbarAction />
+      <DataTableExportToCSV table={table} routeId={userTableRouteId} filename="users" />
       <DataTableViewOptions table={table} />
     </div>
   );
@@ -501,7 +565,6 @@ Incluído no componente `DataTableToolbar`, caso exista uma opção de filtragem
 ```ts
 import * as React from 'react';
 import { CheckIcon, PlusCircledIcon } from '@radix-ui/react-icons';
-import { Column } from '@tanstack/react-table';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -516,32 +579,23 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { DataTableFacetedFilterProps } from '@services/types/tables/DataTableComponents';
 import { useFilters } from '@services/hooks/useFilters';
-import { Filters } from '@/api/types';
-import { Route } from '@/routes/shadcnTable';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 
-interface DataTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>;
-  title?: string;
-  options: {
-    label: string;
-    value: string;
-    icon?: React.ComponentType<{ className?: string }>;
-  }[];
-}
-function isFilterKey<T>(key: any, filters: Filters<T>): key is keyof Filters<T> {
-  return key in filters;
-}
-
-export function DataTableFacetedFilter<TData, TValue>({
+type FacetsType = Map<string | string[], number>;
+export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<RegisteredRouter['routeTree']>>({
   column,
   title,
   options,
-}: DataTableFacetedFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues();
-  // Custom facets if keys is array then sum the equal value and remove duplicate
-  const customFacets = new Map();
-  for (const [key, value] of facets as any) {
+  routeId,
+}: DataTableFacetedFilterProps<TData, TValue, R>) {
+  const { filters, setFilters } = useFilters<R>(routeId);
+  const facets = column?.getFacetedUniqueValues() as FacetsType;
+
+  const customFacets = new Map<string, number>();
+
+  for (const [key, value] of facets) {
     if (Array.isArray(key)) {
       for (const k of key) {
         const prevValue = customFacets.get(k) || 0;
@@ -552,18 +606,16 @@ export function DataTableFacetedFilter<TData, TValue>({
       customFacets.set(key, prevValue + value);
     }
   }
-  const { filters, setFilters } = useFilters(Route.fullPath);
 
-  const filterKey = column?.id as string;
+  const filterKey = column?.id as keyof typeof filters;
 
-  const filterValues =
-    isFilterKey(filterKey, filters) && Array.isArray(filters[filterKey]) ? (filters[filterKey] as string[]) : [];
+  const filterValues: string[] = filters[filterKey] as string[];
 
   const [selectedValues, setSelectedValues] = React.useState(new Set(filterValues));
 
   React.useEffect(() => {
     setSelectedValues(new Set(filterValues));
-  }, [filters, column?.id]);
+  }, [filterValues]);
 
   const handleSelect = (value: string) => {
     setSelectedValues((prev) => {
@@ -573,15 +625,26 @@ export function DataTableFacetedFilter<TData, TValue>({
       } else {
         newSelectedValues.add(value);
       }
-      const filterValues = Array.from(newSelectedValues);
-      setFilters({ [column?.id as string]: filterValues.length ? filterValues : undefined });
+
+      const updatedFilterValues = Array.from(newSelectedValues);
+
+      const updatedFilters = {
+        ...filters,
+        [filterKey]: updatedFilterValues.length ? updatedFilterValues : undefined,
+      } as Partial<typeof filters>;
+
+      setFilters(updatedFilters);
+
       return newSelectedValues;
     });
   };
 
   const handleClearFilters = () => {
     setSelectedValues(new Set());
-    setFilters({ [column?.id as string]: [] });
+
+    setFilters({
+      [filterKey]: undefined,
+    } as Partial<typeof filters>);
   };
 
   return (
@@ -599,13 +662,13 @@ export function DataTableFacetedFilter<TData, TValue>({
               <div className="hidden space-x-1 lg:flex">
                 {selectedValues.size > 2 ? (
                   <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {selectedValues.size} selected
+                    {selectedValues.size} selecionados
                   </Badge>
                 ) : (
                   options
-                    .filter((option) => selectedValues.has(option.value))
+                    .filter((option) => selectedValues.has(option.id))
                     .map((option) => (
-                      <Badge variant="secondary" key={option.value} className="rounded-sm px-1 font-normal">
+                      <Badge variant="secondary" key={option.id} className="rounded-sm px-1 font-normal">
                         {option.label}
                       </Badge>
                     ))
@@ -619,12 +682,12 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>Opção não encontrada.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
-                const isSelected = selectedValues.has(option.value);
+                const isSelected = selectedValues.has(option.id);
                 return (
-                  <CommandItem key={option.value} onSelect={() => handleSelect(option.value)}>
+                  <CommandItem key={option.id} onSelect={() => handleSelect(option.id)}>
                     <div
                       className={cn(
                         'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
@@ -636,7 +699,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                     {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
                     <span>{option.label}</span>
                     <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                      {customFacets.get(option.value)}
+                      {customFacets.get(option.id)}
                     </span>
                   </CommandItem>
                 );
@@ -647,7 +710,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem onSelect={handleClearFilters} className="justify-center text-center">
-                    Clear filters
+                    Limpar filtragem
                   </CommandItem>
                 </CommandGroup>
               </>
@@ -659,8 +722,465 @@ export function DataTableFacetedFilter<TData, TValue>({
   );
 }
 
+```
+
+O componente `SelectedIdsFacetedFilter` com a funcionalidade de gerenciar os estados de linhas selecionadas na tabela:
+
+```ts
+import * as React from 'react';
+import { CheckIcon } from '@radix-ui/react-icons';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
+import { Filters } from '@services/types/tables/FilterExtension';
+import { SelectionType } from '@services/types/tables/FilterExtension';
+import { ListTodo } from 'lucide-react';
+import { useFilters } from '@services/hooks/useFilters';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { selectionOptions } from '@services/constants/labels';
+
+type SelectedIdsFacetedFilterProps<R extends RouteIds<RegisteredRouter['routeTree']>> = {
+  title?: string;
+  routeId: R;
+};
+
+export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
+  title = 'Selecionados',
+  routeId,
+}: SelectedIdsFacetedFilterProps<R>) {
+  const { filters, setFilters } = useFilters(routeId);
+  const { selection } = filters as Filters<T>;
+  const selectedValues = React.useMemo(() => new Set(selection || []), [selection]);
+
+  const handleSelect = (value: SelectionType) => {
+    const newSelectedValues = new Set(selectedValues);
+    if (newSelectedValues.has(value)) {
+      newSelectedValues.delete(value);
+    } else {
+      newSelectedValues.add(value);
+    }
+
+    const updatedSelection = Array.from(newSelectedValues) as Filters<T>['selection'];
+    setFilters({ ...filters, selection: updatedSelection?.length === 0 ? undefined : updatedSelection });
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ ...filters, selection: undefined });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 border-dashed">
+          <ListTodo className="mr-2 h-4 w-4" />
+          {title}
+          {selectedValues.size > 0 && (
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                {selectedValues.size}
+              </Badge>
+              <div className="hidden space-x-1 lg:flex">
+                {selectedValues.size > 2 ? (
+                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                    {selectedValues.size} selecionados
+                  </Badge>
+                ) : (
+                  selectionOptions
+                    .filter((option) => selectedValues.has(option.id))
+                    .map((option) => (
+                      <Badge variant="secondary" key={option.id} className="rounded-sm px-1 font-normal">
+                        {option.label}
+                      </Badge>
+                    ))
+                )}
+              </div>
+            </>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={title} />
+          <CommandList>
+            <CommandEmpty>Opção não encontrada.</CommandEmpty>
+            <CommandGroup>
+              {selectionOptions.map((option) => {
+                const isSelected = selectedValues.has(option.id);
+                return (
+                  <CommandItem key={option.id} onSelect={() => handleSelect(option.id)}>
+                    <div
+                      className={cn(
+                        'border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible',
+                      )}
+                    >
+                      <CheckIcon className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            {selectedValues.size > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem onSelect={handleClearFilters} className="justify-center text-center">
+                    Limpar filtragem
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 ```
+
+O componente `DebouncedInput` com a funcionalidade de capturar os valores de filtragem no input:
+
+```ts
+import { InputHTMLAttributes, useEffect, useState } from 'react';
+import { Input } from './ui/input';
+
+export function DebouncedInput({
+  value: initialValue,
+  onChange,
+  debounce = 200,
+  ...props
+}: {
+  value: string | number;
+  onChange: (value: string | number) => void;
+  debounce?: number;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'>) {
+  const [value, setValue] = useState<string | number>(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      onChange(value);
+    }, debounce);
+
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <Input
+      {...props}
+      min={props.min ?? 0}
+      step={props.step ?? "0.01"}
+      value={value ?? ''}
+      onChange={(e) => {
+        if (e.target.value === '') return setValue('');
+        if (props.type === 'number') {
+          setValue(e.target.valueAsNumber);
+        } else {
+          setValue(e.target.value);
+        }
+      }}
+    />
+  );
+}
+
+```
+
+O componente `DatePickerWithRange` com a funcionalidade de gerenciar uma filtragem por range de data em um período:
+
+```ts
+import * as React from 'react';
+import { intlFormat } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useFilters } from '@services/hooks/useFilters';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { Filters } from '@services/types/tables/FilterExtension';
+import { DateLocaleType } from '@services/types/Date';
+import { useIsMobile } from '@services/hooks/use-mobile';
+
+type DatePickerWithRangeType<R> = React.HTMLAttributes<HTMLDivElement> & {
+  routeId: R;
+  format?: 'short' | 'long';
+  locale?: DateLocaleType;
+  alignPopoverContent?: 'start' | 'center' | 'end';
+};
+export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
+  routeId,
+  locale = 'pt-BR',
+  format = 'short',
+  alignPopoverContent = 'start',
+  className,
+  ...props
+}: DatePickerWithRangeType<R>) {
+  const { filters, setFilters } = useFilters(routeId);
+
+  const { from, to } = filters as Filters<T>;
+
+  const selectedDate = React.useMemo(() => {
+    if (!from && !to) return undefined;
+    const date = { to: to, from: from };
+    return date;
+  }, [from, to]);
+
+  function dateFormatter(date: Date) {
+    return intlFormat(
+      date,
+      format === 'long'
+        ? {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }
+        : {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+          },
+      {
+        locale: locale || 'pt-BR',
+      },
+    );
+  }
+
+  return (
+    <div className={cn('grid gap-2', className)} {...props}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant={'outline'}
+            className={cn(
+              'w-full border-dashed pl-3 text-left font-normal',
+              !selectedDate?.from && !selectedDate?.to && 'text-muted-foreground',
+            )}
+          >
+            {selectedDate?.from ? (
+              selectedDate.to ? (
+                `${dateFormatter(selectedDate.from)} - ${dateFormatter(selectedDate.to)}`
+              ) : (
+                dateFormatter(selectedDate.from)
+              )
+            ) : (
+              <span>{'Escolha um período'}</span>
+            )}
+            <CalendarIcon className="ml-2 h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align={alignPopoverContent}>
+          <Calendar
+            customMode="range"
+            autoFocus
+            customLocale={locale || 'pt-BR'}
+            selected={selectedDate}
+            numberOfMonths={2}
+            disabled={{ after: new Date() }}
+            onSelect={(selected: DateRange) => {
+              setFilters({
+                ...filters,
+                from: selected ? selected.from : undefined,
+                to: selected ? selected.to : undefined,
+              });
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+```
+
+O componente `DataTableExportToCSV` com a funcionalidade de extrair os dados de uma tabela para um arquivo .csv:
+
+```ts
+import { Button } from '@components/ui/button';
+import { useFilters } from '@services/hooks/useFilters';
+import { exportTableToCSV } from '@services/utils/export';
+import { Table } from '@tanstack/react-table';
+import { Download } from 'lucide-react';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { Filters } from '@services/types/tables/FilterExtension';
+
+export interface DataTableExportToCSVProps<TData, R extends RouteIds<RegisteredRouter['routeTree']>> {
+  table: Table<TData>;
+  routeId: R;
+  filename?: string;
+  excludeColumns?: (keyof TData | 'select' | 'actions')[];
+}
+export function DataTableExportToCSV<TData, R extends RouteIds<RegisteredRouter['routeTree']>>({
+  table,
+  routeId,
+  filename = 'table',
+  excludeColumns = []
+}: DataTableExportToCSVProps<TData, R>) {
+  const { filters } = useFilters(routeId);
+  const { selection } = filters as Filters<TData>;
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() =>
+        exportTableToCSV(table, {
+          filename,
+          excludeColumns,
+          onlySelected: selection?.length === 1 && selection?.includes('SELECTED'),
+        })
+      }
+      className="mx-2 gap-2"
+    >
+      <Download className="size-4" aria-hidden="true" />
+      Exportar
+    </Button>
+  );
+}
+
+```
+
+Sendo a função `exportTableToCSV` para exportar a tabela configurada da seguinte forma:
+
+```ts
+import { type Table } from '@tanstack/react-table';
+
+export function exportTableToCSV<TData>(
+  /**
+   * The table to export.
+   * @type Table<TData>
+   */
+  table: Table<TData>,
+  opts: {
+    /**
+     * The filename for the CSV file.
+     * @default "table"
+     * @example "tasks"
+     */
+    filename?: string;
+    /**
+     * The columns to exclude from the CSV file.
+     * @default []
+     * @example ["select", "actions"]
+     */
+    excludeColumns?: (keyof TData | 'select' | 'actions')[];
+
+    /**
+     * Whether to export only the selected rows.
+     * @default false
+     */
+    onlySelected?: boolean;
+  } = {},
+): void {
+  const { filename = 'table', excludeColumns = [], onlySelected = false } = opts;
+
+  // Retrieve headers (column names)
+  const headers = table
+    .getAllLeafColumns()
+    .map((column) => column.id as string) // Force column.id to be string
+    .filter((id) => !excludeColumns.includes(id as keyof TData | 'select' | 'actions')); // Filter out excluded columns
+
+  // Build CSV content
+  console.log('onlySelected: ', onlySelected);
+  const csvContent = [
+    headers.join(','), // Join headers with commas
+    ...(onlySelected ? table.getFilteredSelectedRowModel().rows : table.getRowModel().rows).map((row) =>
+      headers
+        .map((header) => {
+          const cellValue = row.getValue(header);
+          // Handle values that might contain commas or newlines
+          return typeof cellValue === 'string' ? `"${cellValue.replace(/"/g, '""')}"` : cellValue;
+        })
+        .join(','),
+    ),
+  ].join('\n');
+  // Create a Blob with CSV content
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  // Create a link and trigger the download
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+```
+
+O componente `DataTableViewOptions` com a funcionalidade de gerenciar a visibilidade de colunas na tebela:
+
+```ts
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+
+interface DataTableViewOptionsProps<TData> {
+  table: Table<TData>;
+}
+
+export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
+          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
+          Visualização
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[150px]">
+        <DropdownMenuLabel>Visualizar colunas</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {table
+          .getAllColumns()
+          .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
+          .map((column) => {
+            return (
+              <DropdownMenuCheckboxItem
+                key={column.id}
+                className="capitalize"
+                checked={column.getIsVisible()}
+                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+              >
+                {column.columnDef.meta?.name}
+              </DropdownMenuCheckboxItem>
+            );
+          })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+```
+
+---
 
 ## Configurando o TanStack Router e Query para o Data Table
 
@@ -672,76 +1192,83 @@ A definição das colunas em uma **Data Table** é crucial para estruturar a man
 
 ### Estrutura Geral das Colunas
 
-As colunas são definidas usando o tipo `ColumnDef<T>`, onde `T` é o tipo de dado que a tabela manipula. No caso da nossa tabela, estamos utilizando o tipo `Task`, que contém campos como `id`, `title`, `status`, e `priority`. Aqui está a estrutura completa da nossa definição de colunas:
+As colunas são definidas usando o tipo `ColumnDef<T>`, onde `T` é o tipo de dado que a tabela manipula. No caso da nossa tabela, estamos utilizando o tipo `UserTable`, que contém campos como `id`, `name`, `email`, `role`, e `birthday`. Aqui está a estrutura completa da nossa definição de colunas:
 
 ```ts
 import { ColumnDef } from '@tanstack/react-table';
-import { labels, priorities, statuses } from '@/constants/options';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Task } from '@services/types/Task';
-import { DataTableColumnHeader } from './data-table-column-header';
-import { DataTableRowActions } from './data-table-row-actions';
+import { UserButtonAction } from './user-row-actions';
+import { DataTableColumnHeader } from '../common/data-table-column-header';
+import { UserTable, UserTableType } from '@services/types/tables/User';
+import { roles } from '@services/constants/labels';
 
-export const columnsExample: ColumnDef<Task>[] = [
+import { SelectAllCheckbox } from '../common/select-all-rows-action';
+import { CheckedRow } from '../common/check-row-action';
+import { ActionHeader } from '../common/data-table-action-header';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import { GetDataTableColumnHeaderName } from '@services/utils/headerName';
+import { dateFormatter } from '@services/utils/utils';
+
+const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
+
+export const userColumns: ColumnDef<UserTableType>[] = [
   {
     id: 'select',
     header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="translate-y-[2px]"
+      <SelectAllCheckbox
+        table={table}
+        routeId={userTableRouteId}
+        allIds={table.getRowModel().rows.map((row) => UserTable.parse(row.original).id)}
       />
     ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
+    cell: ({ row }) => <CheckedRow row={row} routeId={userTableRouteId} id={UserTable.parse(row.original).id} />,
     enableSorting: false,
     enableHiding: false,
   },
   {
     accessorKey: 'id',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Task" />,
-    cell: ({ row }) => <div className="w-[80px]">{row.getValue('id')}</div>,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
+    cell: ({ row }) => <div>{row.getValue('id')}</div>,
     enableSorting: false,
     enableHiding: false,
+    meta: { filterKey: 'id', name: 'Id', filterVariant: 'number' },
   },
   {
-    accessorKey: 'title',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
+    accessorKey: 'name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
     cell: ({ row }) => {
-      const label = labels.find((label) => label.value === row.original.label);
-
       return (
-        <div className="flex space-x-2">
-          {label && <Badge variant="outline">{label.label}</Badge>}
-          <span className="max-w-[500px] truncate font-medium">{row.getValue('title')}</span>
+        <div className="flex justify-center space-x-2">
+          <span className="truncate font-medium">{row.getValue('name')}</span>
         </div>
       );
     },
-    meta: { filterKey: 'title' },
+    meta: { filterKey: 'name', name: 'Nome' },
   },
   {
-    accessorKey: 'status',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+    accessorKey: 'email',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
     cell: ({ row }) => {
-      const statusArray = row.getValue('status') as string[];
-      const status = statuses.find((status) => statusArray.includes(status.value));
+      return (
+        <div className="flex justify-center space-x-2">
+          <span className="truncate font-medium">{row.getValue('email')}</span>
+        </div>
+      );
+    },
+    meta: { filterKey: 'email', name: 'Email' },
+  },
+  {
+    accessorKey: 'role',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
+    cell: ({ row }) => {
+      const rolesArray = row.getValue('role') as string[];
+      const role = roles.find((roles) => rolesArray.includes(roles.id));
 
-      if (!status) {
+      if (!role) {
         return null;
       }
-
       return (
-        <div className="flex w-[100px] items-center">
-          {status.icon && <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
-          <span>{status.label}</span>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <span className="text-nowrap">{role.label}</span>
         </div>
       );
     },
@@ -749,33 +1276,24 @@ export const columnsExample: ColumnDef<Task>[] = [
       const rowValue = row.getValue(id) as string[];
       return value.some((v: string) => rowValue.includes(v));
     },
+    meta: { name: 'Perfil' },
   },
   {
-    accessorKey: 'priority',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Priority" />,
+    accessorKey: 'birthday',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
     cell: ({ row }) => {
-      const priorityArray = row.getValue('priority') as string[];
-      const priority = priorities.find((priority) => priorityArray.includes(priority.value));
-
-      if (!priority) {
-        return null;
-      }
-
       return (
-        <div className="flex items-center">
-          {priority.icon && <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
-          <span>{priority.label}</span>
+        <div className="flex justify-center space-x-2">
+          <span className="truncate font-medium">{dateFormatter({ date: row.getValue('birthday') })}</span>
         </div>
       );
     },
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as string[];
-      return value.some((v: string) => rowValue.includes(v));
-    },
+    meta: { filterKey: 'birthday', name: 'Data de Nascimento' },
   },
   {
     id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    header: () => <ActionHeader title="Ações" />,
+    cell: ({ row }) => <UserButtonAction row={row} />,
   },
 ];
 
@@ -793,58 +1311,53 @@ Esta coluna permite a seleção de linhas na tabela, útil para ações em massa
 
 ```ts
 {
-  id: 'select',
-  header: ({ table }) => (
-    <Checkbox
-      checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-      onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      aria-label="Select all"
-      className="translate-y-[2px]"
-    />
-  ),
-  cell: ({ row }) => (
-    <Checkbox
-      checked={row.getIsSelected()}
-      onCheckedChange={(value) => row.toggleSelected(!!value)}
-      aria-label="Select row"
-      className="translate-y-[2px]"
-    />
-  ),
-  enableSorting: false,
-  enableHiding: false,
-}
+    id: 'select',
+    header: ({ table }) => (
+      <SelectAllCheckbox
+        table={table}
+        routeId={userTableRouteId}
+        allIds={table.getRowModel().rows.map((row) => UserTable.parse(row.original).id)}
+      />
+    ),
+    cell: ({ row }) => <CheckedRow row={row} routeId={userTableRouteId} id={UserTable.parse(row.original).id} />,
+    enableSorting: false,
+    enableHiding: false,
+  },
+
 ```
 
-### Coluna de Status (`accessorKey: 'status'`)
+### Coluna de Perfil (`accessorKey: 'role'`)
 
-Essa coluna exibe o status da tarefa, com ícones e textos associados.
+Essa coluna exibe o nível de perfil do usuário.
 
-- **Cabeçalho**: Usa `DataTableColumnHeader` para exibir o título "Status".
-- **Célula**: Exibe o ícone e o nome do status da tarefa.
-- **Função de Filtro**: Permite filtrar tarefas com base em múltiplos status. A função `filterFn` compara os status selecionados pelo usuário com o status da tarefa.
+- **Cabeçalho**: Usa `DataTableColumnHeader` para exibir o título "Perfil", sendo indicado o texto a partir do valor passado no dado meta, na chave `name`.
+- **Célula**: Exibe o nome do nível de perfil do usuário.
+- **Função de Filtro**: Permite filtrar perfis com base em múltiplos níveis. A função `filterFn` compara os níveis selecionados pelo usuário com o nível de perfil.
 
 ```ts
 {
-  accessorKey: 'status',
-  header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-  cell: ({ row }) => {
-    const statusArray = row.getValue('status') as string[];
-    const status = statuses.find((status) => statusArray.includes(status.value));
+    accessorKey: 'role',
+    header: ({ column }) => <DataTableColumnHeader column={column} title={GetDataTableColumnHeaderName({ column })} />,
+    cell: ({ row }) => {
+      const rolesArray = row.getValue('role') as string[];
+      const role = roles.find((roles) => rolesArray.includes(roles.id));
 
-    if (!status) return null;
+      if (!role) {
+        return null;
+      }
+      return (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <span className="text-nowrap">{role.label}</span>
+        </div>
+      );
+    },
+    filterFn: (row, id, value) => {
+      const rowValue = row.getValue(id) as string[];
+      return value.some((v: string) => rowValue.includes(v));
+    },
+    meta: { name: 'Perfil' },
+  },
 
-    return (
-      <div className="flex w-[100px] items-center">
-        {status.icon && <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
-        <span>{status.label}</span>
-      </div>
-    );
-  },
-  filterFn: (row, id, value) => {
-    const rowValue = row.getValue(id) as string[];
-    return value.some((v: string) => rowValue.includes(v));
-  },
-}
 ```
 
 Para configurar as funcionalidades de **Ordenação** no cabeçalho das colunas, foi criado o seguinte componente `DataTableColumnHeader`:
@@ -859,12 +1372,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
-import { Button } from '../ui/button';
+} from '@components/ui/dropdown-menu';
+import { Button } from '@components/ui/button';
 
 interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<TData, TValue>;
-  title: string;
+  title?: string;
 }
 
 export function DataTableColumnHeader<TData, TValue>({
@@ -877,10 +1390,10 @@ export function DataTableColumnHeader<TData, TValue>({
   }
 
   return (
-    <div className={cn('flex items-center space-x-2', className)}>
+    <div className={cn('flex items-center justify-center space-x-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="-ml-3 h-8 data-[state=open]:bg-accent">
+          <Button variant="ghost" size="sm" className="ml-3 h-8 data-[state=open]:bg-accent">
             <span>{title}</span>
             {column.getIsSorted() === 'desc' ? (
               <ArrowDownIcon className="ml-2 h-4 w-4" />
@@ -917,76 +1430,62 @@ export function DataTableColumnHeader<TData, TValue>({
 
 A última coluna é a coluna de ações, que permite realizar ações como editar ou excluir a tarefa.
 
-- **Célula**: Renderiza os botões de ação usando o componente `DataTableRowActions`.
+- **Célula**: Renderiza os botões de ação usando o componente `UserButtonAction` e `ActionHeader`.
 
 ```ts
-{
-  id: 'actions',
-  cell: ({ row }) => <DataTableRowActions row={row} />,
-}
+  {
+    id: 'actions',
+    header: () => <ActionHeader title="Ações" />,
+    cell: ({ row }) => <UserButtonAction row={row} />,
+  },
+
 ```
 
-Sendo o componente **DataTableRowActions** criado da seguinte forma:
+Sendo o componente **ActionHeader** criado da seguinte forma:
 
 ```ts
-import { DotsHorizontalIcon } from '@radix-ui/react-icons';
-import { Row } from '@tanstack/react-table';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { taskSchema } from '@services/types/Task';
-import { labels } from '@/constants/options';
+import { cn } from '@lib/utils';
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
-}
-
-export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TData>) {
-  const task = taskSchema.parse(row.original);
-
+type ActionHeaderType = {
+  title: string;
+  classNameTitle?: string;
+} & React.HTMLAttributes<HTMLDivElement>;
+export function ActionHeader({ title, classNameTitle, ...props }: ActionHeaderType) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex h-8 w-8 p-0 data-[state=open]:bg-muted">
-          <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Make a copy</DropdownMenuItem>
-        <DropdownMenuItem>Favorite</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={task.label}>
-              {labels.map((label) => (
-                <DropdownMenuRadioItem key={label.value} value={label.value}>
-                  {label.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          Delete
-          <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div {...props} className={cn('flex justify-center', props.className)}>
+      <span className={cn('text-sm font-medium leading-none', classNameTitle)}>{title}</span>
+    </div>
+  );
+
+```
+
+E o componente **UserButtonAction** criado da seguinte forma:
+
+```ts
+import { DialogComponent } from '@components/dialog';
+import { Button } from '@components/ui/button';
+import { DataTableRowActionsProps } from '@services/types/tables/DataTableComponents';
+import { UserTable } from '@services/types/tables/User';
+import { useRouter } from '@tanstack/react-router';
+import { EditIcon } from 'lucide-react';
+
+export function UserButtonAction<TData>({ row }: DataTableRowActionsProps<TData>) {
+  const user = UserTable.parse(row.original);
+  const router = useRouter();
+  return (
+    <div className="flex justify-center gap-3">
+      <Button
+        onClick={() =>
+          router.navigate({
+            to: '/shadcnTable',
+          })
+        }
+        variant="outline"
+      >
+        <EditIcon />
+      </Button>
+      <DialogComponent buttonType="rowAction" title={`Deseja remover o usuário ${user.name}?`} />
+    </div>
   );
 }
 
@@ -999,61 +1498,44 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
 Após criar todos os componentes e configurações necessárias para a criação do Data Table utilizando os componentes do `Shadcn/ui` com as funcionalidades de gerenciar o estado dos filtros através dos parâmetros de URL. Podemos utilizar a Data Table na rota de desejo:
 
 ```tsx
-import { useMemo } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { fetchTasks, TaskFilters } from '@/api/task';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import DataTableExample from '@/components/table-example';
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '@/components/table';
-import { columnsExample } from '@/components/Table/columns-example';
 import { useFilters } from '@services/hooks/useFilters';
-import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
+import { userColumns } from '@components/Table/users/user-columns';
+import { UserFilters } from '@services/types/tables/User';
+import { queryOptionsUserTable } from '@services/hooks/useTableUser';
+import DataTable from '@components/Table/common/data-table';
+import { DataTableToolbar } from '@components/Table/users/user-table-toolbar';
 
 export const Route = createFileRoute('/shadcnTable')({
-  validateSearch: () => ({}) as TaskFilters,
+  loaderDeps: ({ search: filters }) => filters,
+  loader: ({ context: { queryClient }, deps: filters }) => queryClient.ensureQueryData(queryOptionsUserTable(filters)),
+  validateSearch: () => ({}) as UserFilters,
   component: DataTableComponent,
 });
 
 function DataTableComponent() {
-  const { filters, resetFilters, setFilters } = useFilters(Route.fullPath);
+  const { filters, resetFilters } = useFilters(Route.fullPath);
 
-  const { data } = useQuery({
-    queryKey: ['tasks', filters],
-    queryFn: () => fetchTasks(filters),
-    placeholderData: keepPreviousData,
-  });
-
-  const paginationState = {
-    pageIndex: filters.pageIndex ?? DEFAULT_PAGE_INDEX,
-    pageSize: filters.pageSize ?? DEFAULT_PAGE_SIZE,
-  };
-  const sortingState = sortByToState(filters.sortBy);
-  const columns = useMemo(() => columnsExample, []);
+  const data = Route.useLoaderData();
+  const columns = useMemo(() => userColumns, []);
 
   return (
-    <>
-      <DataTableExample
-        data={data?.result ?? []}
-        columns={columns}
-        pagination={paginationState}
-        paginationOptions={{
-          onPaginationChange: (pagination) => {
-            setFilters(typeof pagination === 'function' ? pagination(paginationState) : pagination);
-          },
-          rowCount: data?.rowCount,
-        }}
-        filters={filters}
-        onFilterChange={(filters) => setFilters(filters)}
-        sorting={sortingState}
-        onSortingChange={(updaterOrValue) => {
-          const newSortingState = typeof updaterOrValue === 'function' ? updaterOrValue(sortingState) : updaterOrValue;
-          return setFilters({ sortBy: stateToSortBy(newSortingState) });
-        }}
-      />
-      <button onClick={resetFilters}>Reset Filters</button>
+    <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
+      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbar} />
+      <div className="flex items-center gap-2">
+        {data?.rowCount} users found
+        <Button
+          className="rounded border p-1 disabled:cursor-not-allowed disabled:text-gray-500"
+          onClick={resetFilters}
+          disabled={Object.keys(filters).length === 0}
+        >
+          Reset Filters
+        </Button>
+      </div>
       <pre>{JSON.stringify(filters, null, 2)}</pre>
-    </>
+    </div>
   );
 }
 ```

@@ -5,6 +5,7 @@ import ConfigContentUS from '@assets/pages/config-en.md';
 import i18n from '../i18n/config';
 import { PendingComponent } from '@components/PendingComponent';
 import { postsQueryOptions } from '@services/hooks/postsQueryOptions';
+import { MovetoTopButton } from '@components/MoveToTop';
 
 export const Route = createFileRoute('/config')({
   loader: ({ context: { queryClient } }) =>
@@ -15,5 +16,10 @@ export const Route = createFileRoute('/config')({
 
 function ConfigComponent() {
   const content = Route.useLoaderData();
-  return <MarkdownComponent source={content} />;
+  return (
+    <>
+      <MarkdownComponent source={content} />;
+      <MovetoTopButton />
+    </>
+  );
 }

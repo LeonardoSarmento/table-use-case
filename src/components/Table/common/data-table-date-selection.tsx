@@ -10,6 +10,7 @@ import { useFilters } from '@services/hooks/useFilters';
 import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { Filters } from '@services/types/tables/FilterExtension';
 import { DateLocaleType } from '@services/types/Date';
+import { useIsMobile } from '@services/hooks/use-mobile';
 
 type DatePickerWithRangeType<R> = React.HTMLAttributes<HTMLDivElement> & {
   routeId: R;
@@ -85,7 +86,7 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
             autoFocus
             customLocale={locale || 'pt-BR'}
             selected={selectedDate}
-            numberOfMonths={2}
+            numberOfMonths={useIsMobile() ? 1 : 2}
             disabled={{ after: new Date() }}
             onSelect={(selected: DateRange) => {
               setFilters({

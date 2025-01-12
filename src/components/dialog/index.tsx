@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button, ButtonProps } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import React from 'react';
 import { DeleteIcon } from 'lucide-react';
 
 type DialogType = {
@@ -17,33 +18,38 @@ type DialogType = {
   buttonText?: string;
   mutate?: () => void;
   buttonType?: 'rowAction' | 'button';
-} & React.HTMLAttributes<HTMLButtonElement>;
-export function DialogComponent({ title, buttonText, mutate, buttonType = 'button', ...props }: DialogType) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant={buttonType === 'rowAction' ? 'outline' : 'destructive'} {...props}>
-          {buttonType === 'rowAction' ? <DeleteIcon /> : buttonText ? buttonText : 'Deletar'}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            Após excluir os registros selecionados, não é possível recuperar esses registros.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Cancelar
-            </Button>
-          </DialogClose>
-          <Button type="button" onClick={mutate} variant="destructive">
-            Deletar
+} & ButtonProps;
+
+export const DialogComponent = React.forwardRef<HTMLButtonElement, DialogType>(
+  ({ title, buttonText, mutate, buttonType = 'button', ...props }, ref) => {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button {...props} ref={ref} variant={buttonType === 'rowAction' ? 'outline' : 'destructive'}>
+            {buttonType === 'rowAction' ? <DeleteIcon /> : buttonText ? buttonText : 'Deletar'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              Após excluir os registros selecionados, não é possível recuperar esses registros.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancelar
+              </Button>
+            </DialogClose>
+            <DialogClose asChild>
+              <Button type="button" onClick={mutate} variant="destructive">
+                Deletar
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+);

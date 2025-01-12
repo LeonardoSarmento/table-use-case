@@ -11,6 +11,8 @@ import ResetButton from '../common/ResetButton';
 import { IsColumnFiltered } from '@services/utils/utils';
 import { DataTableViewOptions } from '../common/data-table-view-options';
 import { DatePickerWithRange } from '../common/data-table-date-selection';
+import { DataTableExportToCSV } from '../common/data-table-export-to-csv';
+
 export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
 
@@ -79,6 +81,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
         {isFiltered && <ResetButton routeId={userTableRouteId} />}
       </div>
       <UserToolbarAction />
+      <DataTableExportToCSV table={table} routeId={userTableRouteId} filename="users" />
       <DataTableViewOptions table={table} />
     </div>
   );
