@@ -87,7 +87,7 @@ export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<Registe
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('h-8 border-dashed w-fit min-w-full', classNameButton)}>
+        <Button variant="outline" size="sm" className={cn('h-8 border-dashed min-w-fit w-auto', classNameButton)}>
           <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (

@@ -44,7 +44,7 @@ function ToolbarFilter<R extends RouteIds<RegisteredRouter['routeTree']>>({
                   <span className="sr-only">Open menu</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="max-w-[225px] min-w-fit gap-y-2 p-2 flex flex-col">
+              <PopoverContent align="start" className="flex min-w-fit max-w-[225px] flex-col gap-y-2 p-2">
                 <div className="flex justify-between">
                   <DropdownMenuLabel>Colunas</DropdownMenuLabel>
                   <PopoverClose>
@@ -59,6 +59,7 @@ function ToolbarFilter<R extends RouteIds<RegisteredRouter['routeTree']>>({
                     </React.Fragment>
                   ) : null,
                 )}
+                {IsColumnFiltered(filters as Filters<R>) && <ResetButton routeId={routeId} />}
               </PopoverContent>
             </Popover>
           )}
