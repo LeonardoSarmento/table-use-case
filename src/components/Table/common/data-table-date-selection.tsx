@@ -18,7 +18,7 @@ type DatePickerWithRangeType<R> = React.HTMLAttributes<HTMLDivElement> & {
   locale?: DateLocaleType;
   alignPopoverContent?: 'start' | 'center' | 'end';
 };
-export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
+export function DatePickerWithFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
   routeId,
   locale = 'pt-BR',
   format = 'short',
@@ -63,6 +63,7 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
         <PopoverTrigger asChild>
           <Button
             variant={'outline'}
+            size='sm'
             className={cn(
               'w-full border-dashed pl-3 text-left font-normal',
               !selectedDate?.from && !selectedDate?.to && 'text-muted-foreground',
@@ -101,3 +102,5 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
     </div>
   );
 }
+
+export const DatePickerWithRange = React.memo(DatePickerWithFilter);

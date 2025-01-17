@@ -6,7 +6,7 @@ import { userColumns } from '@components/Table/users/user-columns';
 import { UserFilters } from '@services/types/tables/User';
 import { queryOptionsUserTable } from '@services/hooks/useTableUser';
 import DataTable from '@components/Table/common/data-table';
-import { DataTableToolbar } from '@components/Table/users/user-table-toolbar';
+import { DataTableToolbarUsers } from '@components/Table/users/user-table-toolbar';
 
 export const Route = createFileRoute('/shadcnTable')({
   loaderDeps: ({ search: filters }) => filters,
@@ -23,7 +23,7 @@ function DataTableComponent() {
 
   return (
     <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
-      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbar} />
+      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbarUsers} />
       <div className="flex items-center gap-2">
         {data?.rowCount} users found
         <Button

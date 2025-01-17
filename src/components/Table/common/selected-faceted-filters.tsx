@@ -24,11 +24,13 @@ import { selectionOptions } from '@services/constants/labels';
 type SelectedIdsFacetedFilterProps<R extends RouteIds<RegisteredRouter['routeTree']>> = {
   title?: string;
   routeId: R;
+  className?: string;
 };
 
 export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
   title = 'Selecionados',
   routeId,
+  className
 }: SelectedIdsFacetedFilterProps<R>) {
   const { filters, setFilters } = useFilters(routeId);
   const { selection } = filters as Filters<T>;
@@ -53,7 +55,7 @@ export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['ro
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className={cn('h-8 border-dashed', className)}>
           <ListTodo className="mr-2 h-4 w-4" />
           {title}
           {selectedValues.size > 0 && (

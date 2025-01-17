@@ -11,7 +11,7 @@ import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { GetDataTableColumnHeaderName } from '@services/utils/headerName';
 import { dateFormatter } from '@services/utils/utils';
 
-const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
+export const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
 
 export const userColumns: ColumnDef<UserTableType>[] = [
   {
