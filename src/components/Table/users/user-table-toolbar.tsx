@@ -34,7 +34,6 @@ export function DataTableToolbarUsers<TData>({ table }: DataTableToolbarProps<TD
           <DataTableFacetedFilter
             column={table.getColumn('role')}
             title="Perfil"
-            classNameButton="max-sm:flex-1"
             options={roles}
             routeId={userTableRouteId}
           />
