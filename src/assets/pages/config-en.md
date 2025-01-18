@@ -244,7 +244,7 @@ Next, we’ll create the `DataTable` component, responsible for displaying data,
 
 ### `DataTable` Component Code
 
-```tsx
+```ts
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -258,14 +258,14 @@ import {
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table';
 import { DataTablePagination } from './data-table-pagination';
 import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
-import { useFilters } from '@services/hooks/useFilters';
-import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
-import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { Filters, PaginatedData } from '@services/types/tables/FilterExtension';
+import { sortByToState, stateToSortBy } from '@services/utils/tableSortMapper';
+import { useFilters } from '@services/hooks/useFilters';
 
 export const DEFAULT_PAGE_INDEX = 0;
 export const DEFAULT_PAGE_SIZE = 10;
@@ -278,12 +278,25 @@ type Props<
   columns: ColumnDef<T>[];
   toolbar?: ({ table }: DataTableToolbarProps<T>) => React.JSX.Element;
   routeId: R;
+  header?: boolean;
+  pagination?: boolean;
+  pageselection?: boolean;
+  rowcountselection?: boolean;
 };
 
 export default function DataTable<
   T extends Record<string, string | number | string[] | number[] | Date>,
   R extends RouteIds<RegisteredRouter['routeTree']>,
->({ data, columns, toolbar, routeId }: Props<T, R>) {
+>({
+  data,
+  columns,
+  routeId,
+  toolbar,
+  header = true,
+  pagination = true,
+  pageselection = true,
+  rowcountselection = true,
+}: Props<T, R>) {
   const { filters, setFilters } = useFilters<R>(routeId);
   const { pageIndex, pageSize, sortBy } = filters as Filters<T>;
   const paginationState = {
@@ -323,22 +336,24 @@ export default function DataTable<
   });
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border p-2">
+    <div className="flex flex-col gap-3 rounded-lg border p-2 overflow-scroll">
       {toolbar && toolbar({ table: table })}
       <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
+        {header ? (
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+        ) : null}
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
@@ -357,10 +372,13 @@ export default function DataTable<
           )}
         </TableBody>
       </Table>
-      <DataTablePagination table={table} />
+      {pagination ? (
+        <DataTablePagination table={table} pageselection={pageselection} rowcountselection={rowcountselection} />
+      ) : null}
     </div>
   );
 }
+
 ```
 
 Setting up the table’s manual pagination component:
@@ -372,95 +390,107 @@ import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRigh
 import { Table } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pagination, PaginationContent, PaginationItem } from '@components/ui/pagination';
-import { Separator } from '@components/ui/separator';
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
+  pageselection?: boolean;
+  rowcountselection?: boolean;
 }
 
-export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData>({
+  table,
+  pageselection = true,
+  rowcountselection = true,
+}: DataTablePaginationProps<TData>) {
   return (
-    <Pagination className="w-full">
-      <PaginationContent className="flex w-full justify-between px-2">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} de {table.getFilteredRowModel().rows.length} linha(s)
-          selecionadas.
-        </div>
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Linhas por página</p>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value));
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium text-nowrap">
-            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
-          </div>
-          <Separator orientation="vertical" />
-          <div className="flex items-center space-x-2">
-            <PaginationItem>
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Ir para primeira página</span>
-                <DoubleArrowLeftIcon className="h-4 w-4" />
-              </Button>
-            </PaginationItem>
-            <PaginationItem>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Anterior</span>
-                <ChevronLeftIcon className="h-4 w-4" />
-              </Button>
-            </PaginationItem>
-            <PaginationItem>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Próximo</span>
-                <ChevronRightIcon className="h-4 w-4" />
-              </Button>
-            </PaginationItem>
-            <PaginationItem>
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Ir para última página</span>
-                <DoubleArrowRightIcon className="h-4 w-4" />
-              </Button>
-            </PaginationItem>
-          </div>
-        </div>
-      </PaginationContent>
-    </Pagination>
+    <div className="flex flex-col items-center justify-center gap-3 px-2 md:flex-row md:justify-between">
+      <div className="min-w-fit flex-1 text-sm text-muted-foreground">
+        {table.getFilteredSelectedRowModel().rows.length} de {table.getFilteredRowModel().rows.length} linha(s)
+        selecionadas.
+      </div>
+      <div className="flex items-center space-x-6 lg:space-x-8">
+        {rowcountselection ? <RowCountSelection table={table} /> : null}
+        {pageselection ? <PageSelection table={table} /> : null}
+      </div>
+    </div>
+  );
+}
+
+interface RowCountSelectionProps<TData> {
+  table: Table<TData>;
+}
+function RowCountSelection<TData>({ table }: RowCountSelectionProps<TData>) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3 space-x-2">
+      <p className="text-nowrap text-sm font-medium">Linhas por página</p>
+      <Select
+        value={`${table.getState().pagination.pageSize}`}
+        onValueChange={(value) => {
+          table.setPageSize(Number(value));
+        }}
+      >
+        <SelectTrigger className="h-8 w-[70px]">
+          <SelectValue placeholder={table.getState().pagination.pageSize} />
+        </SelectTrigger>
+        <SelectContent side="top">
+          {[10, 20, 30, 40, 50].map((pageSize) => (
+            <SelectItem key={pageSize} value={`${pageSize}`}>
+              {pageSize}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+interface RowCountSelectionProps<TData> {
+  table: Table<TData>;
+}
+function PageSelection<TData>({ table }: RowCountSelectionProps<TData>) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+        Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          className="flex h-8 w-8 p-0"
+          onClick={() => table.setPageIndex(0)}
+          disabled={!table.getCanPreviousPage()}
+        >
+          <span className="sr-only">Ir para primeira página</span>
+          <DoubleArrowLeftIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          className="h-8 w-8 p-0"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          <span className="sr-only">Anterior</span>
+          <ChevronLeftIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          className="h-8 w-8 p-0"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          <span className="sr-only">Próximo</span>
+          <ChevronRightIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          className="flex h-8 w-8 p-0"
+          onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+          disabled={!table.getCanNextPage()}
+        >
+          <span className="sr-only">Ir para última página</span>
+          <DoubleArrowRightIcon className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -469,92 +499,278 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
 And the `DataTableToolbar` component for managing user-applied filters:
 
 ```ts
-import { useFilters } from '@services/hooks/useFilters';
-import { roles } from '@services/constants/labels';
-import { UserFilters } from '@services/types/tables/User';
-import { UserToolbarAction } from './user-toolbar-actions';
+import { Button } from '@components/ui/button';
+import { DropdownMenuLabel, DropdownMenuSeparator } from '@components/ui/dropdown-menu';
 import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
-import { DataTableFacetedFilter } from '../common/data-table-faceted-filter';
-import { SelectedIdsFacetedFilter } from '../common/selected-faceted-filters';
-import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
-import { DebouncedInput } from '@components/debouncedInput';
-import ResetButton from '../common/ResetButton';
+import { Filter } from 'lucide-react';
+import { DataTableViewOptions } from './data-table-view-options';
+import { useFilters } from '@services/hooks/useFilters';
+import { SelectedIdsFacetedFilter } from './selected-faceted-filters';
+import { DatePickerWithRange } from './data-table-date-selection';
 import { IsColumnFiltered } from '@services/utils/utils';
-import { DataTableViewOptions } from '../common/data-table-view-options';
-import { DatePickerWithRange } from '../common/data-table-date-selection';
-import { DataTableExportToCSV } from '../common/data-table-export-to-csv';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+import React from 'react';
+import { Filters } from '@services/types/tables/FilterExtension';
+import ResetButton from './ResetButton';
+import { Popover, PopoverContent, PopoverTrigger } from '@components/ui/popover';
+import { PopoverClose } from '@radix-ui/react-popover';
+import { Cross2Icon } from '@radix-ui/react-icons';
 
-export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
-  const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
-
-  const { filters, setFilters } = useFilters(userTableRouteId);
-  const isFiltered = IsColumnFiltered(filters);
-  const fieldMetaId = table.getColumn('id')?.columnDef.meta;
-  const fieldMetaName = table.getColumn('name')?.columnDef.meta;
-  const fieldMetaEmail = table.getColumn('email')?.columnDef.meta;
-
+function ToolbarFilter<R extends RouteIds<RegisteredRouter['routeTree']>>({
+  routeId,
+  inputs,
+}: {
+  isDropdown?: boolean;
+  routeId: R;
+  inputs?: React.ReactNode[];
+}) {
+  const { filters } = useFilters(routeId);
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
-        <SelectedIdsFacetedFilter title="Selecionados" routeId={userTableRouteId} />
-        {table.getColumn('id')?.getCanFilter() && fieldMetaId?.filterKey !== undefined ? (
-          <DebouncedInput
-            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
-            onChange={(value) => {
-              setFilters({
-                [fieldMetaId.filterKey as keyof UserFilters['id']]: value,
-              } as Partial<TData>);
-            }}
-            step="1"
-            onClick={(e) => e.stopPropagation()}
-            type={fieldMetaId.filterVariant === 'number' ? 'number' : 'text'}
-            placeholder="Procure pelo id"
-            value={filters[fieldMetaId.filterKey as keyof UserFilters['id']] ?? ''}
-          />
-        ) : null}
-        {table.getColumn('name')?.getCanFilter() && fieldMetaName?.filterKey !== undefined ? (
-          <DebouncedInput
-            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
-            onChange={(value) => {
-              setFilters({
-                [fieldMetaName.filterKey as keyof UserFilters]: value,
-              } as Partial<TData>);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            type={fieldMetaName.filterVariant === 'number' ? 'number' : 'text'}
-            placeholder="Procure pelo nome"
-            value={filters[fieldMetaName.filterKey as keyof UserFilters['name']] ?? ''}
-          />
-        ) : null}
-        {table.getColumn('email')?.getCanFilter() && fieldMetaEmail?.filterKey !== undefined ? (
-          <DebouncedInput
-            className="h-8 w-[150px] rounded border shadow lg:w-[150px]"
-            onChange={(value) => {
-              setFilters({
-                [fieldMetaEmail.filterKey as keyof UserFilters]: value,
-              } as Partial<TData>);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            type={fieldMetaEmail.filterVariant === 'number' ? 'number' : 'text'}
-            placeholder="Procure pelo email"
-            value={filters[fieldMetaEmail.filterKey as keyof UserFilters['email']] ?? ''}
-          />
-        ) : null}
-        {table.getColumn('role') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('role')}
-            title="Perfil"
-            options={roles}
-            routeId={userTableRouteId}
-          />
-        )}
-        <DatePickerWithRange routeId={userTableRouteId} />
-        {isFiltered && <ResetButton routeId={userTableRouteId} />}
-      </div>
-      <UserToolbarAction />
-      <DataTableExportToCSV table={table} routeId={userTableRouteId} filename="users" />
-      <DataTableViewOptions table={table} />
+    <>
+      <SelectedIdsFacetedFilter routeId={routeId} />
+      {inputs && inputs.length <= 3
+        ? inputs.map((input, index) =>
+            React.isValidElement(input) ? (
+              <React.Fragment key={input.key || `input-${index}`}>
+                {React.cloneElement(input, { key: input.key || `input-${index}` })}
+              </React.Fragment>
+            ) : null,
+          )
+        : inputs && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-8 space-x-2 data-[state=open]:bg-muted">
+                  <Filter className="h-4 w-4" />
+                  <span>Colunas</span>
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="flex min-w-fit max-w-[225px] flex-col gap-y-2 p-2">
+                <div className="flex justify-between">
+                  <DropdownMenuLabel>Colunas</DropdownMenuLabel>
+                  <PopoverClose>
+                    <Cross2Icon />
+                  </PopoverClose>
+                </div>
+                <DropdownMenuSeparator />
+                {inputs.map((input, index) =>
+                  React.isValidElement(input) ? (
+                    <React.Fragment key={input.key || `input-${index}`}>
+                      {React.cloneElement(input, { key: input.key || `input-${index}` })}
+                    </React.Fragment>
+                  ) : null,
+                )}
+                {IsColumnFiltered(filters as Filters<R>) && <ResetButton routeId={routeId} />}
+              </PopoverContent>
+            </Popover>
+          )}
+      <DatePickerWithRange routeId={routeId} />
+      {IsColumnFiltered(filters as Filters<R>) && <ResetButton routeId={routeId} />}
+    </>
+  );
+}
+function DropdownToolbarFilter<R extends RouteIds<RegisteredRouter['routeTree']>>({
+  routeId,
+  inputs,
+}: {
+  isDropdown?: boolean;
+  routeId: R;
+  inputs?: React.ReactNode[];
+}) {
+  const { filters } = useFilters(routeId);
+  return (
+    <div className="flex flex-col gap-y-3 p-2">
+      <SelectedIdsFacetedFilter routeId={routeId} />
+      {inputs && inputs.length > 0
+        ? inputs.map((input, index) =>
+            React.isValidElement(input) ? (
+              <React.Fragment key={`dropdown-menu-item-input-${index}`}>
+                {React.cloneElement(input, { key: input.key || `dropdown-menu-item-input-${index}` })}
+              </React.Fragment>
+            ) : null,
+          )
+        : null}
+      <DatePickerWithRange routeId={routeId} />
+      {IsColumnFiltered(filters as Filters<R>) && (
+        <>
+          <DropdownMenuSeparator />
+          <ResetButton routeId={routeId} />
+        </>
+      )}
     </div>
+  );
+}
+
+function DropdownMenuToolbarFilter<R extends RouteIds<RegisteredRouter['routeTree']>>({
+  buttonText,
+  routeId,
+  inputs,
+}: {
+  buttonText?: string;
+  inputs?: React.ReactNode[];
+  routeId: R;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild className="xl:hidden">
+        <Button variant="outline" className="h-8 space-x-2 data-[state=open]:bg-muted">
+          <Filter className="h-4 w-4" />
+          <span>{buttonText ?? 'Filtros'}</span>
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="min-w-[8rem] max-w-[225px] p-2">
+        <div className="flex justify-between">
+          <DropdownMenuLabel>{buttonText ?? 'Filtros'}</DropdownMenuLabel>
+          <PopoverClose>
+            <Cross2Icon />
+          </PopoverClose>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownToolbarFilter routeId={routeId} inputs={inputs} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function DataTableToolbar<TData, R extends RouteIds<RegisteredRouter['routeTree']>>({
+  table,
+  Action,
+  buttonText,
+  routeId,
+  inputs,
+}: DataTableToolbarProps<TData> & {
+  Action: React.ReactNode;
+  inputs?: React.ReactNode[];
+  buttonText?: string;
+  routeId: R;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-x-2">
+      <div className="flex flex-1 items-start justify-start gap-2 max-xl:hidden">
+        <ToolbarFilter routeId={routeId} inputs={inputs} />
+      </div>
+      <DropdownMenuToolbarFilter buttonText={buttonText} routeId={routeId} inputs={inputs} />
+      <div className="flex space-x-3">
+        {Action}
+        <DataTableViewOptions table={table} />
+      </div>
+    </div>
+  );
+}
+
+```
+
+The `ControlToolbar` component, to configure which actions are available to the user within the Toolbar, such as the create, delete multiple and back buttons:
+
+```ts
+import { DialogComponent } from '@components/dialog';
+import { Button, buttonVariants } from '@components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@components/ui/dropdown-menu';
+import { cn } from '@lib/utils';
+import { VariantProps } from 'class-variance-authority';
+import { MoreHorizontal } from 'lucide-react';
+import React from 'react';
+import { DataTableExportToCSV } from './data-table-export-to-csv';
+import { Table } from '@tanstack/react-table';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
+
+export interface Action {
+  label?: string;
+  variant?: VariantProps<typeof buttonVariants>['variant'];
+  onClick?: () => void;
+  dialogTitle?: string;
+  protected?: boolean;
+  buttonType?: 'rowAction' | 'button';
+}
+
+export interface ControlToolbarProps<TData, R extends RouteIds<RegisteredRouter['routeTree']>>
+  extends React.HTMLAttributes<HTMLDivElement> {
+  actions: Action[];
+  menuLabel?: string;
+  className?: string;
+  table: Table<TData>;
+  routeId: R;
+  fileName?: string;
+  exportTableToCSV?: boolean;
+}
+
+export function ControlToolbar<TData, R extends RouteIds<RegisteredRouter['routeTree']>>({
+  actions,
+  menuLabel = 'Menu',
+  table,
+  className,
+  routeId,
+  fileName,
+  exportTableToCSV = true,
+  ...props
+}: ControlToolbarProps<TData, R>) {
+  return (
+    <>
+      <div {...props} className={cn('flex justify-center gap-3 max-2xl:hidden', className)}>
+        {actions.map((action, index) => (
+          <div key={index}>
+            {action.dialogTitle ? (
+              <DialogComponent title={action.dialogTitle} />
+            ) : !action.protected ? (
+              <Button onClick={action.onClick} variant={action.variant} size="sm">
+                {action.label}
+              </Button>
+            ) : null}
+          </div>
+        ))}
+        {exportTableToCSV && (
+          <DataTableExportToCSV table={table} routeId={routeId} filename={fileName ?? 'Table-Data'} />
+        )}
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild className="2xl:hidden">
+          <Button variant="outline" className="h-8 space-x-2 data-[state=open]:bg-muted">
+            <MoreHorizontal className="h-4 w-4" />
+            <span>{menuLabel}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[160px]">
+          <DropdownMenuLabel>Opções</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {actions.map((action, index) => (
+            <React.Fragment key={index}>
+              {action.dialogTitle ? (
+                <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                  <DialogComponent className="flex-1" title={action.dialogTitle} mutate={action.onClick} />
+                </DropdownMenuItem>
+              ) : !action.protected ? (
+                <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                  <Button onClick={action.onClick} variant={action.variant} className="flex-1" size="sm">
+                    {action.label}
+                  </Button>
+                </DropdownMenuItem>
+              ) : null}
+            </React.Fragment>
+          ))}
+          {exportTableToCSV && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                <DataTableExportToCSV
+                  className="mx-0 flex-1"
+                  table={table}
+                  routeId={routeId}
+                  filename={fileName ?? 'Table-Data'}
+                />
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }
 
@@ -589,6 +805,8 @@ export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<Registe
   title,
   options,
   routeId,
+  classNameButton,
+  classNamePopover,
 }: DataTableFacetedFilterProps<TData, TValue, R>) {
   const { filters, setFilters } = useFilters<R>(routeId);
   const facets = column?.getFacetedUniqueValues() as FacetsType;
@@ -650,16 +868,16 @@ export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<Registe
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className={cn('h-8 border-dashed min-w-fit w-auto', classNameButton)}>
           <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+              <Badge variant="secondary" className="rounded-sm px-1 font-normal 2xl:hidden">
                 {selectedValues.size}
               </Badge>
-              <div className="hidden space-x-1 lg:flex">
+              <div className="hidden space-x-1 2xl:flex">
                 {selectedValues.size > 2 ? (
                   <Badge variant="secondary" className="rounded-sm px-1 font-normal">
                     {selectedValues.size} selecionados
@@ -678,7 +896,7 @@ export function DataTableFacetedFilter<TData, TValue, R extends RouteIds<Registe
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent className={cn('w-[200px] p-0', classNamePopover)} align="start">
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
@@ -753,11 +971,13 @@ import { selectionOptions } from '@services/constants/labels';
 type SelectedIdsFacetedFilterProps<R extends RouteIds<RegisteredRouter['routeTree']>> = {
   title?: string;
   routeId: R;
+  className?: string;
 };
 
 export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
   title = 'Selecionados',
   routeId,
+  className
 }: SelectedIdsFacetedFilterProps<R>) {
   const { filters, setFilters } = useFilters(routeId);
   const { selection } = filters as Filters<T>;
@@ -782,7 +1002,7 @@ export function SelectedIdsFacetedFilter<R extends RouteIds<RegisteredRouter['ro
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className={cn('h-8 border-dashed', className)}>
           <ListTodo className="mr-2 h-4 w-4" />
           {title}
           {selectedValues.size > 0 && (
@@ -857,11 +1077,15 @@ The `DebouncedInput` component captures filter values in the input field:
 ```ts
 import { InputHTMLAttributes, useEffect, useState } from 'react';
 import { Input } from './ui/input';
+import { useFilters } from '@services/hooks/useFilters';
+import { Table } from '@tanstack/react-table';
+import { cn } from '@lib/utils';
+import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 
 export function DebouncedInput({
   value: initialValue,
   onChange,
-  debounce = 200,
+  debounce = 300,
   ...props
 }: {
   value: string | number;
@@ -887,7 +1111,7 @@ export function DebouncedInput({
     <Input
       {...props}
       min={props.min ?? 0}
-      step={props.step ?? "0.01"}
+      step={props.step ?? '0.01'}
       value={value ?? ''}
       onChange={(e) => {
         if (e.target.value === '') return setValue('');
@@ -901,9 +1125,40 @@ export function DebouncedInput({
   );
 }
 
+export function DebounceFilterInput<TData, R extends RouteIds<RegisteredRouter['routeTree']>>({
+  columnId,
+  table,
+  placeholder,
+  routeId,
+  className,
+}: {
+  columnId: string;
+  placeholder?: string;
+  table: Table<TData>;
+  routeId: R;
+  className?: string;
+}) {
+  const { filters, setFilters } = useFilters(routeId);
+  const fieldMeta = table.getColumn(columnId)?.columnDef.meta;
+  return table.getColumn(columnId)?.getCanFilter() && fieldMeta?.filterKey !== undefined ? (
+    <DebouncedInput
+      className={cn('h-8 flex-1 rounded border shadow lg:w-full max-w-[250px]', className)}
+      onChange={(value) => {
+        setFilters({
+          [fieldMeta.filterKey as string]: value,
+        } as Partial<typeof filters>);
+      }}
+      onClick={(e) => e.stopPropagation()}
+      type={fieldMeta.filterVariant === 'number' ? 'number' : 'text'}
+      placeholder={placeholder ?? `Procure pelo ${columnId}...`}
+      value={(filters[fieldMeta.filterKey as keyof typeof filters] as string) ?? ''}
+    />
+  ) : null;
+}
+
 ```
 
-The `DatePickerWithRange` component manages date range filtering:
+The `DatePickerWithRange` component with the functionality to manage filtering by date range in a period:
 
 ```ts
 import * as React from 'react';
@@ -926,7 +1181,7 @@ type DatePickerWithRangeType<R> = React.HTMLAttributes<HTMLDivElement> & {
   locale?: DateLocaleType;
   alignPopoverContent?: 'start' | 'center' | 'end';
 };
-export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
+export function DatePickerWithFilter<R extends RouteIds<RegisteredRouter['routeTree']>, T>({
   routeId,
   locale = 'pt-BR',
   format = 'short',
@@ -971,6 +1226,7 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
         <PopoverTrigger asChild>
           <Button
             variant={'outline'}
+            size='sm'
             className={cn(
               'w-full border-dashed pl-3 text-left font-normal',
               !selectedDate?.from && !selectedDate?.to && 'text-muted-foreground',
@@ -994,7 +1250,7 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
             autoFocus
             customLocale={locale || 'pt-BR'}
             selected={selectedDate}
-            numberOfMonths={2}
+            numberOfMonths={useIsMobile() ? 1 : 2}
             disabled={{ after: new Date() }}
             onSelect={(selected: DateRange) => {
               setFilters({
@@ -1010,6 +1266,7 @@ export function DatePickerWithRange<R extends RouteIds<RegisteredRouter['routeTr
   );
 }
 
+export const DatePickerWithRange = React.memo(DatePickerWithFilter);
 ```
 
 The `DataTableExportToCSV` component extracts table data to a `.csv` file:
@@ -1200,7 +1457,6 @@ import { UserButtonAction } from './user-row-actions';
 import { DataTableColumnHeader } from '../common/data-table-column-header';
 import { UserTable, UserTableType } from '@services/types/tables/User';
 import { roles } from '@services/constants/labels';
-
 import { SelectAllCheckbox } from '../common/select-all-rows-action';
 import { CheckedRow } from '../common/check-row-action';
 import { ActionHeader } from '../common/data-table-action-header';
@@ -1208,7 +1464,7 @@ import { RegisteredRouter, RouteIds } from '@tanstack/react-router';
 import { GetDataTableColumnHeaderName } from '@services/utils/headerName';
 import { dateFormatter } from '@services/utils/utils';
 
-const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
+export const userTableRouteId: RouteIds<RegisteredRouter['routeTree']> = '/shadcnTable';
 
 export const userColumns: ColumnDef<UserTableType>[] = [
   {
@@ -1491,13 +1747,100 @@ export function UserButtonAction<TData>({ row }: DataTableRowActionsProps<TData>
 
 ```
 
+To define the functionalities found in the Data Table Toolbar for the `Users` context, we must configure them as follows:
+
+```ts
+import { roles } from '@services/constants/labels';
+import { UserToolbarAction } from './user-toolbar-actions';
+import { DataTableToolbarProps } from '@services/types/tables/DataTableComponents';
+import { DataTableFacetedFilter } from '../common/data-table-faceted-filter';
+import { DebounceFilterInput } from '@components/debouncedInput';
+import { DataTableToolbar } from '../common/data-table-toolbar';
+import { userTableRouteId } from './user-columns';
+
+export function DataTableToolbarUsers<TData>({ table }: DataTableToolbarProps<TData>) {
+  return (
+    <DataTableToolbar
+      routeId={userTableRouteId}
+      table={table}
+      inputs={[
+        <DebounceFilterInput
+          table={table}
+          routeId={userTableRouteId}
+          columnId="id"
+          placeholder="Procure pelo id..."
+        />,
+        <DebounceFilterInput
+          table={table}
+          routeId={userTableRouteId}
+          columnId="name"
+          placeholder="Procure pelo nome..."
+        />,
+        <DebounceFilterInput
+          table={table}
+          routeId={userTableRouteId}
+          columnId="email"
+          placeholder="Procure pelo email..."
+        />,
+        table.getColumn('role') && (
+          <DataTableFacetedFilter
+            column={table.getColumn('role')}
+            title="Perfil"
+            options={roles}
+            routeId={userTableRouteId}
+          />
+        ),
+      ]}
+      Action={<UserToolbarAction table={table} />}
+    />
+  );
+}
+
+```
+
+Sendo `UserToolbarAction` definido da seguinte forma:
+
+```ts
+import { DataTableToolbarActionsProps } from '@services/types/tables/DataTableComponents';
+import { useRouter } from '@tanstack/react-router';
+import { ControlToolbar } from '../common/data-table-row-actions';
+import { userTableRouteId } from './user-columns';
+export function UserToolbarAction<TData>({ className, ...props }: DataTableToolbarActionsProps<TData>) {
+  const router = useRouter();
+  return (
+    <ControlToolbar
+      {...props}
+      className={className}
+      routeId={userTableRouteId}
+      fileName="Users"
+      actions={[
+        {
+          label: 'Criar',
+          variant: 'default',
+          onClick: () => router.navigate({ to: '/shadcnTable' }),
+        },
+        {
+          dialogTitle: 'Deseja remover os registros de usuários?',
+        },
+        {
+          label: 'Voltar',
+          variant: 'outline',
+          onClick: () => router.navigate({ to: '/' }),
+        },
+      ]}
+    />
+  );
+}
+
+```
+
 ---
 
 ### `shadcnTable` Route Code
 
 After creating all necessary components and configurations for the Data Table using `Shadcn/UI` components, along with functionality for managing filter states through URL parameters, we can use the Data Table in the desired route.
 
-```tsx
+```ts
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -1506,7 +1849,7 @@ import { userColumns } from '@components/Table/users/user-columns';
 import { UserFilters } from '@services/types/tables/User';
 import { queryOptionsUserTable } from '@services/hooks/useTableUser';
 import DataTable from '@components/Table/common/data-table';
-import { DataTableToolbar } from '@components/Table/users/user-table-toolbar';
+import { DataTableToolbarUsers } from '@components/Table/users/user-table-toolbar';
 
 export const Route = createFileRoute('/shadcnTable')({
   loaderDeps: ({ search: filters }) => filters,
@@ -1523,7 +1866,7 @@ function DataTableComponent() {
 
   return (
     <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
-      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbar} />
+      <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbarUsers} />
       <div className="flex items-center gap-2">
         {data?.rowCount} users found
         <Button
@@ -1538,6 +1881,7 @@ function DataTableComponent() {
     </div>
   );
 }
+
 ```
 
 ## Conclusion

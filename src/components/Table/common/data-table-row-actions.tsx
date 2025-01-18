@@ -54,7 +54,7 @@ export function ControlToolbar<TData, R extends RouteIds<RegisteredRouter['route
             {action.dialogTitle ? (
               <DialogComponent title={action.dialogTitle} />
             ) : !action.protected ? (
-              <Button onClick={action.onClick} variant={action.variant} size='sm'>
+              <Button onClick={action.onClick} variant={action.variant} size="sm">
                 {action.label}
               </Button>
             ) : null}
@@ -74,19 +74,21 @@ export function ControlToolbar<TData, R extends RouteIds<RegisteredRouter['route
         <DropdownMenuContent align="end" className="w-[160px]">
           <DropdownMenuLabel>Opções</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <div className="flex flex-col gap-y-2 p-2">
-            {actions.map((action, index) => (
-              <React.Fragment key={index}>
-                {action.dialogTitle ? (
-                  <DialogComponent title={action.dialogTitle} mutate={action.onClick} />
-                ) : !action.protected ? (
-                  <Button onClick={action.onClick} variant={action.variant} size='sm'>
+          {actions.map((action, index) => (
+            <React.Fragment key={index}>
+              {action.dialogTitle ? (
+                <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                  <DialogComponent className="flex-1" title={action.dialogTitle} mutate={action.onClick} />
+                </DropdownMenuItem>
+              ) : !action.protected ? (
+                <DropdownMenuItem onClick={(e) => e.preventDefault()}>
+                  <Button onClick={action.onClick} variant={action.variant} className="flex-1" size="sm">
                     {action.label}
                   </Button>
-                ) : null}
-              </React.Fragment>
-            ))}
-          </div>
+                </DropdownMenuItem>
+              ) : null}
+            </React.Fragment>
+          ))}
           {exportTableToCSV && (
             <>
               <DropdownMenuSeparator />
