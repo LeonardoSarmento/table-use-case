@@ -65,7 +65,7 @@ export function DebounceFilterInput<TData, R extends RouteIds<RegisteredRouter['
   const fieldMeta = table.getColumn(columnId)?.columnDef.meta;
   return table.getColumn(columnId)?.getCanFilter() && fieldMeta?.filterKey !== undefined ? (
     <DebouncedInput
-      className={cn('h-8 flex-1 rounded border shadow lg:w-full max-w-[250px]', className)}
+      className={cn('max-w-auto h-8 flex-1 rounded border shadow lg:w-full', className)}
       onChange={(value) => {
         setFilters({
           [fieldMeta.filterKey as string]: value,
