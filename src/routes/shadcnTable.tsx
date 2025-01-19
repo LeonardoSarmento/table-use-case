@@ -22,7 +22,7 @@ function DataTableComponent() {
   const columns = useMemo(() => userColumns, []);
 
   return (
-    <div className="m-6 flex flex-col gap-3 rounded-lg border p-2">
+    <div className="md:m-6 flex flex-col gap-3 rounded-lg border p-2">
       <DataTable data={data} columns={columns} routeId={Route.fullPath} toolbar={DataTableToolbarUsers} />
       <div className="flex items-center gap-2">
         {data?.rowCount} users found

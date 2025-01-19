@@ -61,7 +61,7 @@ interface RowCountSelectionProps<TData> {
 function PageSelection<TData>({ table }: RowCountSelectionProps<TData>) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3">
-      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+      <div className="flex w-[150px] lg:w-[100px] items-center overflow-scroll text-nowrap text-sm font-medium">
         Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
       </div>
       <div className="flex items-center space-x-2">
